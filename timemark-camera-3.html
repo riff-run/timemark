@@ -26,28 +26,23 @@
     color: #fff;
     text-shadow: 0 1px 5px rgba(0,0,0,0.7);
   }
-
-  /* time-row: 높이는 경계선이 결정 */
   #time-row {
     display: flex;
     align-items: stretch;
     margin-bottom: 5px;
   }
 
-  /* 시계 숫자 컨테이너: 경계선과 동일 높이, 내용을 하단 정렬 */
+  /* 시계 숫자: 경계선 하단 기준으로 정렬 */
   #clock-outer {
     display: flex;
-    align-items: flex-end;   /* 숫자를 경계선 하단에 맞춤 */
+    align-items: flex-end;
   }
-
-  /* scaleY로 세로 늘이기 — transform-origin: bottom */
   #clock-wrap {
     display: flex;
     align-items: flex-end;
     transform: scaleY(1.22);
     transform-origin: bottom center;
   }
-
   #clock-hh, #clock-mm {
     font-size: clamp(44px, 11.5vw, 66px);
     font-weight: 800;
@@ -56,8 +51,6 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: -1px;
   }
-
-  /* 사각형 콜론: 하단 배치 */
   #clock-colon {
     display: flex;
     flex-direction: column;
@@ -69,6 +62,534 @@
   }
   .colon-dot {
     width: clamp(5px,1.3vw,7px); height: clamp(5px,1.3vw,7px);
+    background: #fff; border-radius: 1px; display: block; flex-shrink: 0;
+  }
+
+  /* 노란 경계선 */
+  #divider-wrap { display: flex; align-items: stretch; padding: 0 12px; }
+  #divider { width: 3px; background: #f0c040; border-radius: 2px; align-self: stretch; }
+
+  /* 날짜/요일 */
+  #date-block {
+    display: flex; flex-direction: column;
+    justify-content: space-between; padding: 2px 0;
+  }
+  #date-text, #day-text {
+    font-size: clamp(14px,3.7vw,20px);
+    font-weight: 400; color: #fff; white-space: nowrap; line-height: 1;
+  }
+
+  #location-text {
+    font-size: clamp(13px,3.4vw,18px);
+    font-weight: 400; color: #fff;
+    line-height: 1.55; margin-top: 4px;
+    text-shadow: 0 1px 5px rgba(0,0,0,0.7);
+  }
+
+  /* ── 우측 세로 시리얼 ── */
+  #serial-block {
+    position: absolute;
+    right: 10px; top: 50%;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: translateY(-50%) rotate(180deg);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    color: rgba(255,255,255,0.82);
+    font-weight: 300;
+    letter-spacing: 0px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    white-space: nowrap;
+  }
+  /* 방패 아이콘: writing-mode+rotate(180deg) 공간에서
+     추가로 rotate(-90deg)하면 화면 기준 우측 방향(텍스트 읽는 방향)으로 정렬됨 */
+  #cert-icon {
+    width: clamp(6px,1.4vw,8px);
+    height: clamp(7px,1.6vw,9px);
+    flex-shrink: 0;
+    opacity: 0.6;
+    /* writing-mode vertical-rl + rotate(180deg) 환경에서
+       SVG를 텍스트와 같은 방향으로 세우려면 rotate(90deg) 추가 */
+    transform: rotate(90deg);
+  }
+  #serial-text, #verified-text {
+    font-size: clamp(9px,2vw,11px);
+    letter-spacing: 0px;
+  }
+
+  /* ── 우측 하단 브랜드 ── */
+  #brand-block {
+    position: absolute; bottom: 108px; right: 18px;
+    text-align: right;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6); line-height: 1.45;
+  }
+  #brand-name { font-size: clamp(13px,3.4vw,19px); font-weight: 400; color: #fff; }
+  #brand-name .hl { color: #f0c040; font-weight: 700; }
+  #brand-sub { font-size: clamp(10px,2.4vw,13px); font-weight: 300; color: rgba(255,255,255,0.88); }
+
+  /* ── 셔터 ── */
+  #controls {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 100px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.38); pointer-events: all;
+  }
+  #shutter-btn {
+    width: 70px; height: 70px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); border: 3px solid #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s; -webkit-tap-highlight-color: transparent;
+  }
+  #shutter-btn:active { transform: scale(0.91); }
+  #shutter-inner { width: 54px; height: 54px; border-radius: 50%; background: #fff; }
+
+  /* ── 에러 배너 ── */
+  #err-banner {
+    display: none; position: absolute; top: 0; left: 0; right: 0;
+    background: rgba(180,30,30,0.88); color: #fff;
+    font-size: 13px; line-height: 1.6; padding: 12px 16px;
+    text-align: center; z-index: 99; white-space: pre-line;
+  }
+
+  /* ── 토스트 ── */
+  #toast {
+    position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.75); color: #fff;
+    padding: 10px 22px; border-radius: 20px; font-size: 14px;
+    opacity: 0; transition: opacity 0.3s; white-space: nowrap; pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── HTTPS 안내 ── */
+  #https-guide {
+    display: none; position: absolute; inset: 0;
+    background: #0a0a0a; color: #fff;
+    flex-direction: column; align-items: stretch;
+    z-index: 200; pointer-events: all; overflow-y: auto;
+  }
+  .guide-header { background: #111; padding: 28px 22px 16px; border-bottom: 1px solid #222; text-align: center; }
+  .guide-header h2 { font-size: 20px; font-weight: 700; color: #f0c040; margin-bottom: 8px; }
+  .guide-header p { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+  .guide-steps { padding: 20px 22px; display: flex; flex-direction: column; gap: 20px; }
+  .step-card { background: #161616; border-radius: 14px; border: 1px solid #2a2a2a; padding: 18px 16px; }
+  .step-badge { display: inline-block; background: #f0c040; color: #000; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; margin-bottom: 10px; }
+  .step-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .step-desc { font-size: 13px; color: rgba(255,255,255,0.72); line-height: 1.65; }
+  .step-desc b { color: #f0c040; }
+  .step-list { margin-top: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .step-item { display: flex; gap: 10px; align-items: flex-start; }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; background: #2a2a2a; color: #f0c040; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-item p { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.55; }
+  .step-item p b { color: #fff; }
+  .guide-url { background: #0d1f0d; border: 1px solid #1a4a1a; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #6fdd6f; font-family: monospace; word-break: break-all; margin-top: 8px; }
+  .already-btn { margin: 4px 22px 30px; background: #f0c040; color: #000; border: none; border-radius: 14px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; text-align: center; }
+</style>
+</head>
+<body>
+<div id="camera-container">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <!-- HTTPS 안내 -->
+  <div id="https-guide">
+    <div class="guide-header">
+      <h2>📱 카메라 사용 방법</h2>
+      <p>갤럭시 크롬에서 카메라를 쓰려면<br>인터넷 주소(https://)로 접속해야 합니다.</p>
+    </div>
+    <div class="guide-steps">
+      <div class="step-card">
+        <span class="step-badge">추천 · 가장 쉬움</span>
+        <div class="step-title">🌐 GitHub Pages로 무료 배포</div>
+        <div class="step-desc">파일을 인터넷에 올리면 자동으로 <b>https://</b> 주소가 생겨요.</div>
+        <div class="step-list">
+          <div class="step-item"><div class="step-num">1</div><p><b>github.com</b> 접속 → 무료 회원가입</p></div>
+          <div class="step-item"><div class="step-num">2</div><p>우상단 <b>＋ → New repository</b> → 이름 입력 → <b>Public</b> → Create</p></div>
+          <div class="step-item"><div class="step-num">3</div><p><b>uploading an existing file</b> → html 파일 업로드 → <b>Commit changes</b></p></div>
+          <div class="step-item"><div class="step-num">4</div><p>Settings → Pages → Source: <b>main</b> → Save</p></div>
+          <div class="step-item"><div class="step-num">5</div><p>아래 주소로 접속!</p></div>
+        </div>
+        <div class="guide-url">https://[아이디].github.io/[저장소이름]/timemark-camera.html</div>
+      </div>
+    </div>
+    <button class="already-btn" onclick="hideGuide()">이미 https:// 주소로 접속 중 → 카메라 시작</button>
+  </div>
+
+  <!-- 오버레이 -->
+  <div id="overlay">
+    <div id="serial-block">
+      <svg id="cert-icon" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M7 1L1.5 3.5V8C1.5 11.1 3.9 14 7 15C10.1 14 12.5 11.1 12.5 8V3.5L7 1Z"
+              stroke="rgba(255,255,255,0.65)" stroke-width="1.1" fill="rgba(255,255,255,0.08)"/>
+        <polyline points="4.5,8 6.2,10 9.5,6"
+                  stroke="rgba(255,255,255,0.65)" stroke-width="1.3"
+                  stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span id="serial-text">RTPRLBYG314WMK</span>
+      <span id="verified-text">Timemark Verified</span>
+    </div>
+
+    <div id="timemark">
+      <div id="time-row">
+        <div id="clock-outer">
+          <div id="clock-wrap">
+            <span id="clock-hh">00</span>
+            <span id="clock-colon">
+              <span class="colon-dot"></span>
+              <span class="colon-dot"></span>
+            </span>
+            <span id="clock-mm">00</span>
+          </div>
+        </div>
+        <div id="divider-wrap"><div id="divider"></div></div>
+        <div id="date-block">
+          <div id="date-text">2026년06월17일</div>
+          <div id="day-text">수요일</div>
+        </div>
+      </div>
+      <div id="location-text">위치 불러오는 중...</div>
+    </div>
+
+    <div id="brand-block">
+      <div id="brand-name"><span class="hl">타임</span>마크</div>
+      <div id="brand-sub">시간 · 위치 인증됨</div>
+    </div>
+    <div id="toast">📸 저장되었습니다</div>
+  </div>
+
+  <div id="err-banner"></div>
+  <div id="controls">
+    <button id="shutter-btn" onclick="takePhoto()">
+      <div id="shutter-inner"></div>
+    </button>
+  </div>
+</div>
+
+<script>
+  const DAYS = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+  let currentLocation = '위치 불러오는 중...';
+  let currentSerial = generateSerial();
+
+  function generateSerial() {
+    const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+    let s = '';
+    for (let i = 0; i < 14; i++) s += c[Math.floor(Math.random()*c.length)];
+    return s;
+  }
+
+  function pad2(n) { return String(n).padStart(2,'0'); }
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock-hh').textContent  = pad2(now.getHours());
+    document.getElementById('clock-mm').textContent  = pad2(now.getMinutes());
+    document.getElementById('date-text').textContent = `${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
+    document.getElementById('day-text').textContent  = DAYS[now.getDay()];
+  }
+
+  // ── 위치: 상세 주소 (동/리 단위까지) ──
+  function getLocation() {
+    if (!navigator.geolocation) { setLoc('위치 정보 미지원'); return; }
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const {latitude:lat, longitude:lng} = pos.coords;
+      setLoc(`${lat.toFixed(5)}°N ${lng.toFixed(5)}°E`);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`,
+          { headers: { 'Accept-Language': 'ko' } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const a = data.address || {};
+          const parts = [];
+          // 광역시/도
+          if (a.province)      parts.push(a.province);
+          else if (a.state)    parts.push(a.state);
+          // 시/군/구
+          if (a.city)          parts.push(a.city);
+          else if (a.county)   parts.push(a.county);
+          // 구 (광역시 내 구)
+          if (a.city_district) parts.push(a.city_district);
+          // 읍/면
+          if (a.town)          parts.push(a.town);
+          else if (a.township) parts.push(a.township);
+          // 동/리
+          if (a.suburb)        parts.push(a.suburb);
+          else if (a.village)  parts.push(a.village);
+          else if (a.hamlet)   parts.push(a.hamlet);
+          // 도로명
+          if (a.road)          parts.push(a.road);
+          // 번지
+          if (a.house_number)  parts.push(a.house_number);
+
+          if (parts.length > 0) setLoc(parts.join(' '));
+        }
+      } catch(e) { /* 좌표 유지 */ }
+    }, err => {
+      const m = {1:'위치 권한 거부됨', 2:'위치 신호 없음', 3:'위치 시간 초과'};
+      setLoc(m[err.code] || '위치 오류');
+    }, { enableHighAccuracy: true, timeout: 15000 });
+  }
+
+  function setLoc(t) {
+    currentLocation = t;
+    document.getElementById('location-text').textContent = t;
+  }
+
+  function hideGuide() {
+    document.getElementById('https-guide').style.display = 'none';
+    startCamera(); getLocation();
+  }
+
+  function checkAndStart() {
+    const ok = location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1';
+    if (!ok) { document.getElementById('https-guide').style.display='flex'; return; }
+    startCamera(); getLocation();
+  }
+
+  async function startCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) { showErr('카메라 API 미지원 브라우저입니다.'); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: {ideal:'environment'}, width:{ideal:3840}, height:{ideal:2160} },
+        audio: false
+      });
+      document.getElementById('video').srcObject = stream;
+    } catch(e) {
+      if (e.name==='OverconstrainedError') {
+        try {
+          document.getElementById('video').srcObject =
+            await navigator.mediaDevices.getUserMedia({video:true, audio:false});
+          return;
+        } catch(e2){}
+      }
+      const m = {
+        NotAllowedError:  '⚠️ 카메라 권한이 거부되었습니다.\n주소창 자물쇠 → 카메라 허용 후 새로고침',
+        NotFoundError:    '카메라 장치를 찾을 수 없습니다.',
+        NotReadableError: '카메라가 다른 앱에서 사용 중입니다.'
+      };
+      showErr(m[e.name] || `카메라 오류: ${e.name}`);
+    }
+  }
+
+  function showErr(msg) {
+    const b = document.getElementById('err-banner');
+    b.textContent = msg; b.style.display = 'block';
+  }
+
+  // ── 촬영: 오버레이를 HTML과 동일하게 Canvas에 렌더 ──
+  function takePhoto() {
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    if (!video.srcObject || video.readyState < 2) { showErr('카메라가 준비되지 않았습니다.'); return; }
+
+    // ★ 촬영마다 새 시리얼 생성
+    currentSerial = generateSerial();
+    document.getElementById('serial-text').textContent = currentSerial;
+
+    canvas.width  = video.videoWidth  || 1920;
+    canvas.height = video.videoHeight || 1080;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    drawOverlay(ctx, canvas.width, canvas.height);
+
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      const now = new Date();
+      a.href     = url;
+      a.download = `timemark_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/jpeg', 0.95);
+
+    showToast();
+  }
+
+  // ── Canvas 오버레이: HTML 미리보기와 완전히 동일하게 ──
+  function drawOverlay(ctx, W, H) {
+    const now  = new Date();
+    const hh   = pad2(now.getHours());
+    const mm   = pad2(now.getMinutes());
+    const yyyy = now.getFullYear();
+    const mo   = pad2(now.getMonth()+1);
+    const dd   = pad2(now.getDate());
+    const day  = DAYS[now.getDay()];
+
+    const sc   = W / 390;
+    const padL = 18 * sc;
+
+    // ── 경계선 크기 계산 (HTML과 동일 비율) ──
+    const cSz  = 62 * sc;           // 폰트 기본 크기
+    const barH = cSz * 1.22;        // scaleY(1.22) 적용 시 실제 높이
+    // 경계선 하단 = 화면 하단 108px 위
+    const barBot = H - 108 * sc;
+    const barTop = barBot - barH;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.65)';
+    ctx.shadowBlur  = 5 * sc;
+    ctx.fillStyle   = '#fff';
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign    = 'left';
+
+    // ── 시계: scaleY(1.22), 하단(barBot) 고정 ──
+    ctx.save();
+    ctx.translate(0, barBot);
+    ctx.scale(1, 1.22);
+    ctx.translate(0, -barBot);
+
+    ctx.font = `800 ${cSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
+    const hhW  = ctx.measureText(hh).width;
+    const mmW  = ctx.measureText(mm).width;
+    const dotSz  = 7  * sc;
+    const dotGap = 5  * sc;
+    const cPad   = 4  * sc;
+
+    // HH (베이스라인 = barBot)
+    ctx.fillText(hh, padL, barBot);
+
+    // 사각형 콜론 — scaleY 공간에서 하단부
+    const colonX = padL + hhW + cPad;
+    const dot2Y  = barBot - 10 * sc;
+    const dot1Y  = dot2Y - dotGap - dotSz;
+    ctx.shadowBlur = 0;
+    ctx.fillRect(colonX, dot1Y, dotSz, dotSz);
+    ctx.fillRect(colonX, dot2Y, dotSz, dotSz);
+    ctx.shadowBlur = 5 * sc;
+
+    // MM
+    const mmX = colonX + dotSz + cPad;
+    ctx.fillText(mm, mmX, barBot);
+    const timeEndX = mmX + mmW;
+
+    ctx.restore(); // scaleY 해제
+
+    // ── 노란 경계선 ──
+    const divX = timeEndX + 12 * sc;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle  = '#f0c040';
+    ctx.fillRect(divX, barTop, 3 * sc, barH);
+    ctx.shadowBlur = 5 * sc;
+    ctx.fillStyle  = '#fff';
+
+    // ── 날짜(경계선 상단) / 요일(경계선 하단) ──
+    const dateX  = divX + 3 * sc + 12 * sc;
+    const dateSz = 19 * sc;
+    ctx.font = `400 ${dateSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
+    ctx.fillText(`${yyyy}년${mo}월${dd}일`, dateX, barTop + dateSz);
+    ctx.fillText(day, dateX, barBot);
+
+    // ── 위치 ──
+    const locSz = 16 * sc;
+    ctx.font = `400 ${locSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
+    wrapText(currentLocation, 26).forEach((line, i) => {
+      ctx.fillText(line, padL, barBot + locSz * 1.6 + i * locSz * 1.5);
+    });
+
+    // ── 우측 하단 브랜드 ──
+    const bSz = 18 * sc;
+    ctx.textAlign = 'right';
+    const bX = W - padL;
+    ctx.font      = `700 ${bSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
+    ctx.fillStyle = '#f0c040';
+    const mkW = ctx.measureText('마크').width;
+    ctx.fillText('타임', bX - mkW, barBot);
+    ctx.font      = `400 ${bSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText('마크', bX, barBot);
+    const subSz = 12 * sc;
+    ctx.font      = `300 ${subSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillText('시간 · 위치 인증됨', bX, barBot + subSz * 1.9);
+
+    // ── 우측 세로 시리얼 ──
+    ctx.save();
+    // 화면 우측 가장자리, 수직 중앙
+    ctx.translate(W - 9 * sc, H * 0.5);
+    // rotate(-90°) = 아래→위 읽는 방향
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowBlur   = 3 * sc;
+
+    const sSz = 10.5 * sc;
+    ctx.font      = `300 ${sSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+
+    const serialStr = `${currentSerial}  Timemark Verified`;
+    const totalW    = ctx.measureText(serialStr).width;
+
+    // 텍스트
+    ctx.fillText(serialStr, 0, 0);
+
+    // 방패 아이콘: rotate(-90°) 공간에서 추가 rotate(0) = 텍스트와 같은 방향
+    // HTML에서 cert-icon에 rotate(90deg) 적용 → canvas도 동일하게 추가 rotate(π/2)
+    const iconOffX = -(totalW / 2) - 13 * sc;
+    ctx.save();
+    ctx.translate(iconOffX, 0);
+    // HTML과 동일: writing-mode+rotate(180deg) 후 SVG rotate(90deg) = 최종 우향
+    // canvas에서: rotate(-90°) 공간에서 rotate(+90°) = 원래 방향 (우향)
+    ctx.rotate(Math.PI / 2);
+
+    const sh = 5 * sc;    // 방패 높이 (더 작게)
+    const sw = sh * 0.88;
+    const sx = -sw / 2;
+    const sy = -sh / 2;
+
+    ctx.shadowBlur  = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth   = 0.9 * sc;
+    ctx.fillStyle   = 'rgba(255,255,255,0.07)';
+
+    ctx.beginPath();
+    ctx.moveTo(sx + sw*0.5, sy);
+    ctx.lineTo(sx + sw,     sy + sh*0.25);
+    ctx.lineTo(sx + sw,     sy + sh*0.55);
+    ctx.quadraticCurveTo(sx+sw, sy+sh, sx+sw*0.5, sy+sh);
+    ctx.quadraticCurveTo(sx,    sy+sh, sx,         sy+sh*0.55);
+    ctx.lineTo(sx, sy+sh*0.25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth   = 0.9 * sc;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.moveTo(sx + sw*0.25, sy + sh*0.52);
+    ctx.lineTo(sx + sw*0.44, sy + sh*0.70);
+    ctx.lineTo(sx + sw*0.75, sy + sh*0.34);
+    ctx.stroke();
+
+    ctx.restore(); // 방패 rotate 해제
+    ctx.restore(); // 시리얼 공간 해제
+    ctx.restore(); // 전체 해제
+  }
+
+  function wrapText(text, max) {
+    if (!text || text.length <= max) return [text];
+    const sp = text.lastIndexOf(' ', max);
+    if (sp < 1) return [text.slice(0, max), text.slice(max)];
+    return [text.slice(0, sp), text.slice(sp+1)];
+  }
+
+  function showToast() {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+  document.getElementById('serial-text').textContent = currentSerial;
+  checkAndStart();
+  setInterval(getLocation, 30000);
+</script>
+</body>
+</html>    width: clamp(5px,1.3vw,7px); height: clamp(5px,1.3vw,7px);
     background: #fff; border-radius: 1px; display: block; flex-shrink: 0;
   }
 
