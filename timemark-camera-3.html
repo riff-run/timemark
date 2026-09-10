@@ -4,562 +4,708 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>타임마크 카메라</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;800;900&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #000;
-    height: 100dvh; width: 100vw;
-    overflow: hidden;
-    font-family: 'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
-    user-select: none;
-    -webkit-font-smoothing: antialiased;
-  }
-  #camera-container { position: relative; width: 100%; height: 100dvh; overflow: hidden; }
-  #video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #canvas { display: none; }
-  #overlay { position: absolute; inset: 0; pointer-events: none; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#000; height:100dvh; width:100vw;
+  overflow:hidden; user-select:none;
+  font-family:'Noto Sans KR',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+#wrap { position:relative; width:100%; height:100dvh; overflow:hidden; }
+#video { width:100%; height:100%; object-fit:cover; display:block; }
+#canvas { display:none; }
 
-  /* ══ 좌하단 전체 블록 ══ */
-  #timemark {
-    position: absolute;
-    bottom: 108px;
-    left: 18px;
-  }
+/* ════════════════════════════
+   오버레이 (미리보기 UI)
+════════════════════════════ */
+#overlay {
+  position:absolute; inset:0; pointer-events:none;
+}
 
-  /* time-row: 높이는 경계선이 결정 */
-  #time-row {
-    display: flex;
-    align-items: flex-end;   /* 모든 자식을 하단 기준 정렬 */
-    line-height: 1;
-  }
+/* ── 좌하단 블록 ── */
+#tm-block {
+  position:absolute;
+  bottom:112px; left:18px;
+  display:flex; flex-direction:column; gap:6px;
+}
 
-  /* 시계 숫자 */
-  #clock-hh, #clock-mm {
-    font-size: clamp(44px, 13vw, 72px);
-    font-weight: 800;
-    color: #fff;
-    line-height: 0.85;           /* 폰트 상단 여백 제거 */
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -2px;
-    text-shadow: 0 1px 5px rgba(0,0,0,0.7);
-    /* 세로로 길게: scaleY는 쓰지 않고 line-height와 transform으로 */
-    display: inline-block;
-    transform: scaleY(1.18);
-    transform-origin: bottom center;
-  }
+/* 시간+경계선+날짜 한 줄 */
+#tm-row {
+  display:flex;
+  align-items:flex-end;
+  gap:0;
+}
 
-  /* 사각형 콜론: 하단에 붙도록 */
-  #clock-colon {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;   /* 하단 정렬 */
-    height: clamp(34px, 9.5vw, 52px);  /* 숫자 높이의 약 65% 지점에 */
-    padding: 0 clamp(2px,0.7vw,5px);
-    padding-bottom: clamp(4px,1.2vw,7px);
-    gap: clamp(3px,0.9vw,5px);
-    vertical-align: bottom;
-  }
-  .colon-dot {
-    width: clamp(5px,1.4vw,8px);
-    height: clamp(5px,1.4vw,8px);
-    background: #fff;
-    border-radius: 1px;
-    display: block;
-    flex-shrink: 0;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.6);
-  }
+/* 시계 숫자 */
+#tm-clock {
+  display:flex;
+  align-items:flex-end;
+  gap:0;
+}
+.tm-digit {
+  font-size:68px;
+  font-weight:900;
+  color:#fff;
+  line-height:1;
+  letter-spacing:-2px;
+  text-shadow:0 2px 8px rgba(0,0,0,0.7);
+  /* 세로로 약간 늘이기 */
+  display:inline-block;
+  transform:scaleY(1.15);
+  transform-origin:bottom;
+}
+/* 사각형 콜론 */
+#tm-colon {
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:flex-end;
+  gap:6px;
+  height:46px;   /* 콜론이 숫자 하단부에 오도록 */
+  padding:0 5px 7px;
+}
+.tm-dot {
+  width:7px; height:7px;
+  background:#fff; border-radius:1px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.6);
+  flex-shrink:0;
+}
 
-  /* 노란 경계선 */
-  #divider {
-    width: 3px;
-    /* 경계선 높이 = 시계 폰트와 동일 */
-    height: clamp(52px, 14.5vw, 80px);
-    background: #f0c040;
-    border-radius: 2px;
-    margin: 0 12px;
-    flex-shrink: 0;
-    /* align-self: stretch 대신 고정 높이로 */
-    align-self: flex-end;
-  }
+/* 노란 경계선 */
+#tm-divider {
+  width:3px;
+  height:62px;   /* 시계와 동일한 기준 높이 */
+  background:#f0c040;
+  border-radius:2px;
+  margin:0 13px;
+  align-self:flex-end;
+  flex-shrink:0;
+}
 
-  /* 날짜/요일: 경계선 높이와 동일하게, 상단=날짜 하단=요일 */
-  #date-block {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: clamp(52px, 14.5vw, 80px);   /* 경계선과 동일 높이 */
-    align-self: flex-end;
-    padding: 2px 0;
-  }
-  #date-text {
-    font-size: clamp(14px, 4vw, 22px);
-    font-weight: 400;
-    color: #fff;
-    white-space: nowrap;
-    line-height: 1;
-    text-shadow: 0 1px 5px rgba(0,0,0,0.7);
-  }
-  #day-text {
-    font-size: clamp(14px, 4vw, 22px);
-    font-weight: 400;
-    color: #fff;
-    line-height: 1;
-    text-shadow: 0 1px 5px rgba(0,0,0,0.7);
-  }
+/* 날짜/요일 블록: 경계선 위아래 끝에 배치 */
+#tm-date {
+  display:flex; flex-direction:column;
+  justify-content:space-between;
+  height:62px;   /* 경계선과 동일 */
+  align-self:flex-end;
+  padding:2px 0;
+}
+.tm-date-line {
+  font-size:19px; font-weight:400; color:#fff;
+  white-space:nowrap; line-height:1;
+  text-shadow:0 1px 6px rgba(0,0,0,0.7);
+}
 
-  #location-text {
-    font-size: clamp(13px, 3.4vw, 18px);
-    font-weight: 400;
-    color: #fff;
-    line-height: 1.5;
-    margin-top: 6px;
-    text-shadow: 0 1px 5px rgba(0,0,0,0.7);
-  }
+/* 위치 */
+#tm-loc {
+  font-size:15px; font-weight:400; color:#fff;
+  line-height:1.5;
+  text-shadow:0 1px 6px rgba(0,0,0,0.7);
+  max-width:75vw;
+}
 
-  /* ══ 우측 세로 시리얼 ══ */
-  #serial-block {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    /* rotate(180deg): 텍스트가 아래→위로 읽히게 */
-    transform: translateY(-50%) rotate(180deg);
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 5px;
-    color: rgba(255,255,255,0.82);
-    font-size: clamp(9px,2vw,11px);
-    font-weight: 300;
-    letter-spacing: 0px;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-    white-space: nowrap;
-  }
+/* 우측 하단 브랜드 */
+#tm-brand {
+  position:absolute; bottom:112px; right:18px;
+  text-align:right;
+  text-shadow:0 1px 5px rgba(0,0,0,0.6);
+  line-height:1.5;
+}
+#tm-brand-name { font-size:18px; font-weight:400; color:#fff; }
+#tm-brand-name .hl { color:#f0c040; font-weight:700; }
+#tm-brand-sub { font-size:12px; font-weight:300; color:rgba(255,255,255,0.88); }
 
-  /* 방패: writing-mode vertical + rotate(180deg) 환경에서
-     SVG 자체는 이미 90도 기울어진 상태.
-     여기서 rotate(90deg) 추가하면 텍스트와 같은 방향(우향) */
-  #cert-icon {
-    width: clamp(6px,1.4vw,8px);
-    height: clamp(7px,1.6vw,9px);
-    flex-shrink: 0;
-    opacity: 0.6;
-    transform: rotate(90deg);
-  }
-  #serial-text, #verified-text {
-    font-size: clamp(9px,2vw,11px);
-    letter-spacing: 0px;
-  }
+/* 우측 세로 시리얼 */
+#tm-serial {
+  position:absolute; right:11px; top:50%;
+  writing-mode:vertical-rl;
+  transform:translateY(-50%) rotate(180deg);
+  display:flex; flex-direction:row;
+  align-items:center; gap:5px;
+  color:rgba(255,255,255,0.8);
+  font-size:10px; font-weight:300;
+  letter-spacing:0.3px;
+  text-shadow:0 1px 3px rgba(0,0,0,0.5);
+  white-space:nowrap;
+}
+#tm-serial svg {
+  width:8px; height:9px; flex-shrink:0; opacity:0.6;
+  /* writing-mode+rotate(180deg) 환경 → +90deg 추가 = 우향 */
+  transform:rotate(90deg);
+}
 
-  /* ══ 우측 하단 브랜드 ══ */
-  #brand-block {
-    position: absolute;
-    bottom: 108px; right: 18px;
-    text-align: right;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-    line-height: 1.45;
-  }
-  #brand-name { font-size: clamp(13px,3.4vw,19px); font-weight: 400; color: #fff; }
-  #brand-name .hl { color: #f0c040; font-weight: 700; }
-  #brand-sub { font-size: clamp(10px,2.4vw,13px); font-weight: 300; color: rgba(255,255,255,0.88); }
+/* ════════════════════════════
+   셔터 영역
+════════════════════════════ */
+#controls {
+  position:absolute; bottom:0; left:0; right:0; height:105px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.4); pointer-events:all; gap:36px;
+}
+#shutter-btn {
+  width:72px; height:72px; border-radius:50%;
+  background:rgba(255,255,255,0.15); border:3.5px solid #fff;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:transform 0.1s; -webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
+}
+#shutter-btn:active { transform:scale(0.9); }
+#shutter-inner { width:55px; height:55px; border-radius:50%; background:#fff; }
 
-  /* ══ 셔터 ══ */
-  #controls {
-    position: absolute; bottom: 0; left: 0; right: 0; height: 100px;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.38); pointer-events: all;
-  }
-  #shutter-btn {
-    width: 70px; height: 70px; border-radius: 50%;
-    background: rgba(255,255,255,0.15); border: 3px solid #fff;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: transform 0.1s; -webkit-tap-highlight-color: transparent;
-  }
-  #shutter-btn:active { transform: scale(0.91); }
-  #shutter-inner { width: 54px; height: 54px; border-radius: 50%; background: #fff; }
+/* 시간 조정 버튼 */
+#time-adjust-btn {
+  width:48px; height:48px; border-radius:50%;
+  background:rgba(255,255,255,0.12); border:2px solid rgba(255,255,255,0.5);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent; flex-shrink:0;
+  color:#fff; font-size:20px; line-height:1;
+  pointer-events:all;
+}
 
-  /* ══ 에러 배너 ══ */
-  #err-banner {
-    display: none; position: absolute; top: 0; left: 0; right: 0;
-    background: rgba(180,30,30,0.88); color: #fff;
-    font-size: 13px; line-height: 1.6; padding: 12px 16px;
-    text-align: center; z-index: 99; white-space: pre-line;
-  }
+/* ════════════════════════════
+   시간 조정 패널
+════════════════════════════ */
+#time-panel {
+  display:none;
+  position:absolute; bottom:105px; left:0; right:0;
+  background:rgba(0,0,0,0.88);
+  padding:18px 24px 20px;
+  pointer-events:all;
+  border-top:1px solid rgba(255,255,255,0.1);
+}
+#time-panel.open { display:block; }
+#time-panel-title {
+  font-size:13px; color:rgba(255,255,255,0.6);
+  margin-bottom:14px; text-align:center;
+}
+#time-picker-row {
+  display:flex; align-items:center; justify-content:center; gap:12px;
+}
+.tp-group {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+}
+.tp-label { font-size:11px; color:rgba(255,255,255,0.5); }
+.tp-display {
+  font-size:38px; font-weight:800; color:#fff; line-height:1;
+  min-width:60px; text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+.tp-colon { font-size:34px; font-weight:800; color:#fff; padding-bottom:4px; }
+.tp-btns { display:flex; gap:8px; margin-top:4px; }
+.tp-btn {
+  width:36px; height:36px; border-radius:50%;
+  background:rgba(255,255,255,0.12); border:1.5px solid rgba(255,255,255,0.25);
+  color:#fff; font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.tp-btn:active { background:rgba(255,255,255,0.25); }
+#time-panel-btns {
+  display:flex; gap:10px; margin-top:16px;
+}
+.tp-action {
+  flex:1; padding:11px; border-radius:10px; border:none;
+  font-size:14px; font-weight:700; cursor:pointer;
+}
+#tp-reset { background:rgba(255,255,255,0.12); color:#fff; }
+#tp-apply { background:#f0c040; color:#000; }
 
-  /* ══ 토스트 ══ */
-  #toast {
-    position: absolute; top: 44px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.75); color: #fff;
-    padding: 10px 22px; border-radius: 20px; font-size: 14px;
-    opacity: 0; transition: opacity 0.3s; white-space: nowrap; pointer-events: none;
-  }
-  #toast.show { opacity: 1; }
+/* ════════════════════════════
+   에러 / 토스트 / HTTPS 안내
+════════════════════════════ */
+#err-banner {
+  display:none; position:absolute; top:0; left:0; right:0;
+  background:rgba(160,20,20,0.9); color:#fff;
+  font-size:13px; line-height:1.6; padding:12px 16px;
+  text-align:center; z-index:99; white-space:pre-line;
+}
+#toast {
+  position:absolute; top:44px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,0.78); color:#fff;
+  padding:10px 22px; border-radius:20px; font-size:14px;
+  opacity:0; transition:opacity 0.3s; white-space:nowrap; pointer-events:none;
+}
+#toast.show { opacity:1; }
 
-  /* ══ HTTPS 안내 ══ */
-  #https-guide {
-    display: none; position: absolute; inset: 0;
-    background: #0a0a0a; color: #fff;
-    flex-direction: column; align-items: stretch;
-    z-index: 200; pointer-events: all; overflow-y: auto;
-  }
-  .guide-header { background: #111; padding: 28px 22px 16px; border-bottom: 1px solid #222; text-align: center; }
-  .guide-header h2 { font-size: 20px; font-weight: 700; color: #f0c040; margin-bottom: 8px; }
-  .guide-header p { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.6; }
-  .guide-steps { padding: 20px 22px; display: flex; flex-direction: column; gap: 20px; }
-  .step-card { background: #161616; border-radius: 14px; border: 1px solid #2a2a2a; padding: 18px 16px; }
-  .step-badge { display: inline-block; background: #f0c040; color: #000; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 20px; margin-bottom: 10px; }
-  .step-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px; }
-  .step-list { margin-top: 10px; display: flex; flex-direction: column; gap: 7px; }
-  .step-item { display: flex; gap: 10px; align-items: flex-start; }
-  .step-num { width: 22px; height: 22px; border-radius: 50%; background: #2a2a2a; color: #f0c040; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-  .step-item p { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.55; }
-  .step-item p b { color: #fff; }
-  .guide-url { background: #0d1f0d; border: 1px solid #1a4a1a; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #6fdd6f; font-family: monospace; word-break: break-all; margin-top: 8px; }
-  .already-btn { margin: 4px 22px 30px; background: #f0c040; color: #000; border: none; border-radius: 14px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; text-align: center; display: block; width: calc(100% - 44px); }
+#https-guide {
+  display:none; position:absolute; inset:0;
+  background:#0a0a0a; color:#fff;
+  flex-direction:column; z-index:200; pointer-events:all; overflow-y:auto;
+}
+.g-header { background:#111; padding:28px 22px 16px; border-bottom:1px solid #222; text-align:center; }
+.g-header h2 { font-size:20px; font-weight:700; color:#f0c040; margin-bottom:8px; }
+.g-header p { font-size:13px; color:rgba(255,255,255,0.7); line-height:1.6; }
+.g-steps { padding:20px 22px; display:flex; flex-direction:column; gap:16px; }
+.g-card { background:#161616; border-radius:14px; border:1px solid #2a2a2a; padding:16px; }
+.g-badge { display:inline-block; background:#f0c040; color:#000; font-size:11px; font-weight:700; padding:2px 9px; border-radius:20px; margin-bottom:8px; }
+.g-title { font-size:15px; font-weight:700; color:#fff; margin-bottom:8px; }
+.g-list { display:flex; flex-direction:column; gap:6px; }
+.g-item { display:flex; gap:10px; align-items:flex-start; }
+.g-num { width:22px; height:22px; border-radius:50%; background:#2a2a2a; color:#f0c040; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.g-item p { font-size:13px; color:rgba(255,255,255,0.75); line-height:1.5; }
+.g-item p b { color:#fff; }
+.g-url { background:#0d1f0d; border:1px solid #1a4a1a; border-radius:8px; padding:10px 12px; font-size:11px; color:#6fdd6f; font-family:monospace; word-break:break-all; margin-top:8px; }
+.g-ok-btn { margin:8px 22px 30px; background:#f0c040; color:#000; border:none; border-radius:14px; padding:15px; font-size:16px; font-weight:700; cursor:pointer; display:block; width:calc(100% - 44px); }
 </style>
 </head>
 <body>
-<div id="camera-container">
+<div id="wrap">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
+  <!-- HTTPS 안내 -->
   <div id="https-guide">
-    <div class="guide-header">
+    <div class="g-header">
       <h2>📱 카메라 사용 방법</h2>
       <p>갤럭시 크롬에서 카메라를 쓰려면<br>https:// 주소로 접속해야 합니다.</p>
     </div>
-    <div class="guide-steps">
-      <div class="step-card">
-        <span class="step-badge">추천 · 가장 쉬움</span>
-        <div class="step-title">🌐 GitHub Pages 업데이트</div>
-        <div class="step-list">
-          <div class="step-item"><div class="step-num">1</div><p><b>github.com/riff-run/timemark</b> 접속</p></div>
-          <div class="step-item"><div class="step-num">2</div><p>파일 클릭 → 우측 상단 ✏️ 연필 아이콘 클릭</p></div>
-          <div class="step-item"><div class="step-num">3</div><p>전체 내용 선택(Ctrl+A) 후 새 코드 붙여넣기</p></div>
-          <div class="step-item"><div class="step-num">4</div><p><b>Commit changes</b> 버튼 클릭 → 1~2분 후 반영</p></div>
+    <div class="g-steps">
+      <div class="g-card">
+        <span class="g-badge">기존 업로드 파일 교체</span>
+        <div class="g-title">🌐 GitHub 파일 업데이트</div>
+        <div class="g-list">
+          <div class="g-item"><div class="g-num">1</div><p><b>github.com/riff-run/timemark</b> 접속</p></div>
+          <div class="g-item"><div class="g-num">2</div><p>파일 클릭 → 우측 상단 ✏️ → 전체선택(Ctrl+A) → 새 코드 붙여넣기</p></div>
+          <div class="g-item"><div class="g-num">3</div><p><b>Commit changes</b> 클릭 → 1~2분 후 반영</p></div>
         </div>
-        <div class="guide-url">https://riff-run.github.io/timemark/timemark-camera.html</div>
+        <div class="g-url">https://riff-run.github.io/timemark/timemark-camera.html</div>
       </div>
     </div>
-    <button class="already-btn" onclick="hideGuide()">이미 https:// 주소로 접속 중 → 카메라 시작</button>
+    <button class="g-ok-btn" onclick="hideGuide()">이미 https:// 주소입니다 → 시작</button>
   </div>
 
+  <!-- 메인 오버레이 -->
   <div id="overlay">
+
     <!-- 우측 세로 시리얼 -->
-    <div id="serial-block">
-      <svg id="cert-icon" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div id="tm-serial">
+      <svg viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M7 1L1.5 3.5V8C1.5 11.1 3.9 14 7 15C10.1 14 12.5 11.1 12.5 8V3.5L7 1Z"
               stroke="rgba(255,255,255,0.65)" stroke-width="1.1" fill="rgba(255,255,255,0.08)"/>
         <polyline points="4.5,8 6.2,10 9.5,6"
                   stroke="rgba(255,255,255,0.65)" stroke-width="1.3"
                   stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
-      <span id="serial-text">RTPRLBYG314WMK</span>
-      <span id="verified-text">Timemark Verified</span>
+      <span id="serial-a"></span>
+      <span id="serial-b">Timemark Verified</span>
     </div>
 
     <!-- 좌하단 -->
-    <div id="timemark">
-      <div id="time-row">
-        <span id="clock-hh">00</span>
-        <span id="clock-colon">
-          <span class="colon-dot"></span>
-          <span class="colon-dot"></span>
-        </span>
-        <span id="clock-mm">00</span>
-        <div id="divider"></div>
-        <div id="date-block">
-          <div id="date-text">2026년06월18일</div>
-          <div id="day-text">목요일</div>
+    <div id="tm-block">
+      <div id="tm-row">
+        <div id="tm-clock">
+          <span class="tm-digit" id="d-hh">00</span>
+          <span id="tm-colon">
+            <span class="tm-dot"></span>
+            <span class="tm-dot"></span>
+          </span>
+          <span class="tm-digit" id="d-mm">00</span>
+        </div>
+        <div id="tm-divider"></div>
+        <div id="tm-date">
+          <div class="tm-date-line" id="d-date">2026년09월10일</div>
+          <div class="tm-date-line" id="d-day">목요일</div>
         </div>
       </div>
-      <div id="location-text">위치 불러오는 중...</div>
+      <div id="tm-loc">위치 불러오는 중...</div>
     </div>
 
     <!-- 우측 하단 브랜드 -->
-    <div id="brand-block">
-      <div id="brand-name"><span class="hl">타임</span>마크</div>
-      <div id="brand-sub">시간 · 위치 인증됨</div>
+    <div id="tm-brand">
+      <div id="tm-brand-name"><span class="hl">타임</span>마크</div>
+      <div id="tm-brand-sub">시간 · 위치 인증됨</div>
     </div>
 
-    <div id="toast">📸 저장되었습니다</div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- 시간 조정 패널 -->
+  <div id="time-panel">
+    <div id="time-panel-title">⏱ 표시 시간 조정 (실제 시간과 다르게 설정 가능)</div>
+    <div id="time-picker-row">
+      <div class="tp-group">
+        <div class="tp-label">시</div>
+        <div class="tp-display" id="tp-hh">00</div>
+        <div class="tp-btns">
+          <button class="tp-btn" onclick="adjH(-1)">−</button>
+          <button class="tp-btn" onclick="adjH(+1)">＋</button>
+        </div>
+      </div>
+      <div class="tp-colon">:</div>
+      <div class="tp-group">
+        <div class="tp-label">분</div>
+        <div class="tp-display" id="tp-mm">00</div>
+        <div class="tp-btns">
+          <button class="tp-btn" onclick="adjM(-1)">−</button>
+          <button class="tp-btn" onclick="adjM(+1)">＋</button>
+        </div>
+      </div>
+    </div>
+    <div id="time-panel-btns">
+      <button class="tp-action" id="tp-reset" onclick="resetTime()">실제 시간으로 초기화</button>
+      <button class="tp-action" id="tp-apply" onclick="applyTime()">적용</button>
+    </div>
   </div>
 
   <div id="err-banner"></div>
+
   <div id="controls">
+    <!-- 시간 조정 버튼 -->
+    <button id="time-adjust-btn" onclick="togglePanel()">⏱</button>
+    <!-- 셔터 -->
     <button id="shutter-btn" onclick="takePhoto()">
       <div id="shutter-inner"></div>
     </button>
+    <!-- 여백용 더미 -->
+    <div style="width:48px;height:48px;flex-shrink:0;"></div>
   </div>
 </div>
 
 <script>
-  const DAYS = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
-  let currentLocation = '위치 불러오는 중...';
-  let currentSerial   = generateSerial();
+// ════ 상수 ════
+const DAYS = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+const FONT = "'Noto Sans KR', sans-serif";
 
-  function generateSerial() {
-    const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-    let s = ''; for (let i=0;i<14;i++) s+=c[Math.floor(Math.random()*c.length)]; return s;
+// ════ 상태 ════
+let currentLocation = '위치 불러오는 중...';
+let currentSerial   = genSerial();
+let timeOffset      = 0;   // ms 단위 오프셋 (시간 조정)
+let panelOpen       = false;
+let tpH = 0, tpM = 0;     // 패널 내 임시 값
+
+function genSerial(){
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+  let s=''; for(let i=0;i<14;i++) s+=c[Math.floor(Math.random()*c.length)]; return s;
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+// ════ 표시 시간 계산 ════
+function displayNow(){
+  return new Date(Date.now() + timeOffset);
+}
+
+// ════ 시계 업데이트 ════
+function updateClock(){
+  const now = displayNow();
+  document.getElementById('d-hh').textContent   = pad2(now.getHours());
+  document.getElementById('d-mm').textContent   = pad2(now.getMinutes());
+  document.getElementById('d-date').textContent = `${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
+  document.getElementById('d-day').textContent  = DAYS[now.getDay()];
+}
+
+// ════ 시간 패널 ════
+function togglePanel(){
+  panelOpen = !panelOpen;
+  const p = document.getElementById('time-panel');
+  if(panelOpen){
+    const now = displayNow();
+    tpH = now.getHours(); tpM = now.getMinutes();
+    renderPicker();
+    p.classList.add('open');
+  } else {
+    p.classList.remove('open');
   }
-  function pad2(n){ return String(n).padStart(2,'0'); }
-
-  function updateClock(){
-    const now=new Date();
-    document.getElementById('clock-hh').textContent  = pad2(now.getHours());
-    document.getElementById('clock-mm').textContent  = pad2(now.getMinutes());
-    document.getElementById('date-text').textContent = `${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
-    document.getElementById('day-text').textContent  = DAYS[now.getDay()];
-  }
-
-  // ── 위치: Kakao + Nominatim 병행, 상세 주소 ──
-  async function getLocation(){
-    if(!navigator.geolocation){ setLoc('위치 정보 미지원'); return; }
-    navigator.geolocation.getCurrentPosition(async pos=>{
-      const {latitude:lat, longitude:lng} = pos.coords;
-      setLoc(`${lat.toFixed(4)}°N ${lng.toFixed(4)}°E`);
-      try {
-        // zoom=18: 건물/번지 수준, addressdetails=1: 전체 필드
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=ko`,
-          { headers:{'User-Agent':'timemark-app/1.0'} }
-        );
-        if(!res.ok) throw new Error('fetch fail');
-        const data = await res.json();
-        const a = data.address||{};
-
-        const parts=[];
-        // 1. 광역시/도
-        const sido = a.province || a.state || '';
-        if(sido) parts.push(sido);
-        // 2. 시/군 (광역시 자체는 이미 sido에 포함되므로 중복 방지)
-        const sigun = a.city || a.county || '';
-        if(sigun && sigun!==sido) parts.push(sigun);
-        // 3. 구 (city_district: 수원시 팔달구 등)
-        const gu = a.city_district || a.borough || '';
-        if(gu) parts.push(gu);
-        // 4. 읍/면 (town/township)
-        const eup = a.town || a.township || '';
-        if(eup) parts.push(eup);
-        // 5. 동/리 (suburb=동, village/hamlet=리)
-        const dong = a.suburb || a.village || a.hamlet || a.neighbourhood || '';
-        if(dong) parts.push(dong);
-        // 6. 도로명
-        if(a.road) parts.push(a.road);
-        // 7. 번지
-        if(a.house_number) parts.push(a.house_number);
-
-        if(parts.length>0) setLoc(parts.join(' '));
-        else setLoc(data.display_name?.split(',').slice(0,4).reverse().join(' ')||`${lat.toFixed(4)}°N ${lng.toFixed(4)}°E`);
-      } catch(e){ /* 좌표 그대로 */ }
-    }, err=>{
-      setLoc({1:'위치 권한 거부됨',2:'위치 신호 없음',3:'위치 시간 초과'}[err.code]||'위치 오류');
-    },{ enableHighAccuracy:true, timeout:15000, maximumAge:0 });
-  }
-
-  function setLoc(t){ currentLocation=t; document.getElementById('location-text').textContent=t; }
-
-  function hideGuide(){
-    document.getElementById('https-guide').style.display='none';
-    startCamera(); getLocation();
-  }
-  function checkAndStart(){
-    const ok=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
-    if(!ok){ document.getElementById('https-guide').style.display='flex'; return; }
-    startCamera(); getLocation();
-  }
-  async function startCamera(){
-    if(!navigator.mediaDevices?.getUserMedia){ showErr('카메라 API 미지원 브라우저입니다.'); return; }
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}}, audio:false
-      });
-      document.getElementById('video').srcObject=stream;
-    }catch(e){
-      if(e.name==='OverconstrainedError'){
-        try{ document.getElementById('video').srcObject=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); return; }catch(e2){}
-      }
-      const m={NotAllowedError:'⚠️ 카메라 권한이 거부되었습니다.\n주소창 자물쇠 → 카메라 허용 후 새로고침',
-               NotFoundError:'카메라 장치를 찾을 수 없습니다.',NotReadableError:'카메라가 다른 앱에서 사용 중입니다.'};
-      showErr(m[e.name]||`카메라 오류: ${e.name}`);
-    }
-  }
-  function showErr(msg){ const b=document.getElementById('err-banner'); b.textContent=msg; b.style.display='block'; }
-
-  // ── 촬영 ──
-  function takePhoto(){
-    const video=document.getElementById('video'), canvas=document.getElementById('canvas');
-    if(!video.srcObject||video.readyState<2){ showErr('카메라가 준비되지 않았습니다.'); return; }
-
-    // ★ 촬영마다 새 시리얼
-    currentSerial=generateSerial();
-    document.getElementById('serial-text').textContent=currentSerial;
-
-    canvas.width=video.videoWidth||1920; canvas.height=video.videoHeight||1080;
-    const ctx=canvas.getContext('2d');
-    ctx.drawImage(video,0,0);
-    drawOverlay(ctx,canvas.width,canvas.height);
-
-    canvas.toBlob(blob=>{
-      const url=URL.createObjectURL(blob), a=document.createElement('a'), now=new Date();
-      a.href=url;
-      a.download=`timemark_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}.jpg`;
-      a.click(); URL.revokeObjectURL(url);
-    },'image/jpeg',0.95);
-    showToast();
-  }
-
-  // ══ Canvas 오버레이: HTML과 1:1 동일하게 ══
-  function drawOverlay(ctx, W, H){
-    const now=new Date();
-    const hh=pad2(now.getHours()), mm=pad2(now.getMinutes());
-    const yyyy=now.getFullYear(), mo=pad2(now.getMonth()+1), dd=pad2(now.getDate());
-    const day=DAYS[now.getDay()];
-
-    const sc   = W/390;
-    const padL = 18*sc;
-    // 기준: 하단 108px = 셔터 영역 위
-    const BOT  = H - 108*sc;
-
-    // ── 폰트 기본 크기 (clamp(44,13vw,72) → 390px 기준 13vw=50.7px) ──
-    const cSz  = Math.min(72, Math.max(44, W*0.13)) * sc / sc; // 실제 px
-    // 경계선 높이 = 시계 폰트 * 1.18(scaleY) * line-height 보정
-    const barH = cSz * 1.18 * 0.85 * 1.05;  // line-height:0.85 적용
-    const barBot= BOT;      // 경계선 하단 = BOT
-    const barTop= BOT - barH;
-
-    ctx.save();
-    ctx.shadowColor='rgba(0,0,0,0.65)'; ctx.shadowBlur=5*sc;
-    ctx.fillStyle='#fff'; ctx.textBaseline='bottom'; ctx.textAlign='left';
-
-    // ── 시계: scaleY(1.18), 하단=BOT 고정 ──
-    const fontSz = Math.min(72*sc, Math.max(44*sc, W*0.13));
-    ctx.save();
-    ctx.transform(1,0,0,1.18, 0, BOT*(1-1.18));  // 하단 고정 scaleY
-    ctx.font=`800 ${fontSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
-
-    const hhW=ctx.measureText(hh).width;
-    const mmW=ctx.measureText(mm).width;
-    const dotSz=Math.max(5*sc,7*sc*W/390);
-    const dotGap=5*sc; const cPad=4*sc;
-
-    ctx.fillText(hh, padL, BOT);
-
-    // 사각형 콜론 (하단부)
-    const colonX=padL+hhW+cPad;
-    const dot2Y=BOT - 10*sc;
-    const dot1Y=dot2Y - dotGap - dotSz;
-    ctx.shadowBlur=0;
-    ctx.fillRect(colonX, dot1Y, dotSz, dotSz);
-    ctx.fillRect(colonX, dot2Y, dotSz, dotSz);
-    ctx.shadowBlur=5*sc;
-
-    const mmX=colonX+dotSz+cPad;
-    ctx.fillText(mm, mmX, BOT);
-    const timeEndX=mmX+mmW;
-    ctx.restore();  // scaleY 해제
-
-    // ── 노란 경계선 ──
-    const divX=timeEndX+12*sc;
-    ctx.shadowBlur=0; ctx.fillStyle='#f0c040';
-    ctx.fillRect(divX, barTop, 3*sc, barH);
-    ctx.shadowBlur=5*sc; ctx.fillStyle='#fff';
-
-    // ── 날짜(상단) / 요일(하단) ──
-    const dateX=divX+3*sc+12*sc;
-    const dateSz=Math.min(22*sc, Math.max(14*sc, W*0.04));
-    ctx.font=`400 ${dateSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
-    ctx.textBaseline='top';
-    ctx.fillText(`${yyyy}년${mo}월${dd}일`, dateX, barTop+2*sc);   // 경계선 상단
-    ctx.textBaseline='bottom';
-    ctx.fillText(day, dateX, barBot);                                // 경계선 하단
-
-    // ── 위치 ──
-    const locSz=Math.min(18*sc, Math.max(13*sc, W*0.034));
-    ctx.font=`400 ${locSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
-    ctx.textBaseline='top';
-    wrapText(currentLocation,28).forEach((line,i)=>{
-      ctx.fillText(line, padL, BOT+locSz*0.4+i*locSz*1.5);
-    });
-
-    // ── 우측 하단 브랜드 ──
-    const bSz=Math.min(19*sc, Math.max(13*sc, W*0.034));
-    ctx.textAlign='right'; ctx.textBaseline='bottom';
-    const bX=W-padL;
-    ctx.font=`700 ${bSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
-    ctx.fillStyle='#f0c040';
-    const mkW=ctx.measureText('마크').width;
-    ctx.fillText('타임', bX-mkW, BOT);
-    ctx.font=`400 ${bSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
-    ctx.fillStyle='#fff'; ctx.fillText('마크', bX, BOT);
-    const subSz=Math.min(13*sc,Math.max(10*sc,W*0.024));
-    ctx.font=`300 ${subSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
-    ctx.fillStyle='rgba(255,255,255,0.88)'; ctx.textBaseline='top';
-    ctx.fillText('시간 · 위치 인증됨', bX, BOT+subSz*0.3);
-
-    // ── 우측 세로 시리얼 ──
-    ctx.save();
-    ctx.translate(W-9*sc, H*0.5);
-    ctx.rotate(-Math.PI/2);   // 아래→위 방향
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.shadowBlur=3*sc;
-
-    const sSz=10.5*sc;
-    ctx.font=`300 ${sSz}px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif`;
-    ctx.fillStyle='rgba(255,255,255,0.82)';
-    const serialStr=`${currentSerial}  Timemark Verified`;
-    const totalW=ctx.measureText(serialStr).width;
-    ctx.fillText(serialStr,0,0);
-
-    // 방패: rotate(-PI/2) 공간에서 rotate(+PI/2) = 원래 방향(우향) = HTML의 rotate(90deg)와 동일
-    const iconOffX=-(totalW/2)-13*sc;
-    ctx.save();
-    ctx.translate(iconOffX,0);
-    ctx.rotate(Math.PI/2);   // 텍스트와 같은 방향으로 세우기
-
-    const sh=5*sc, sw=sh*0.88, sx=-sw/2, sy=-sh/2;
-    ctx.shadowBlur=0;
-    ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=0.9*sc;
-    ctx.fillStyle='rgba(255,255,255,0.07)';
-    ctx.beginPath();
-    ctx.moveTo(sx+sw*0.5,sy);
-    ctx.lineTo(sx+sw,sy+sh*0.25); ctx.lineTo(sx+sw,sy+sh*0.55);
-    ctx.quadraticCurveTo(sx+sw,sy+sh,sx+sw*0.5,sy+sh);
-    ctx.quadraticCurveTo(sx,sy+sh,sx,sy+sh*0.55);
-    ctx.lineTo(sx,sy+sh*0.25); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,0.6)';
-    ctx.lineWidth=0.9*sc; ctx.lineCap='round'; ctx.lineJoin='round';
-    ctx.moveTo(sx+sw*0.25,sy+sh*0.52);
-    ctx.lineTo(sx+sw*0.44,sy+sh*0.70);
-    ctx.lineTo(sx+sw*0.75,sy+sh*0.34);
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.restore();
-    ctx.restore();
-  }
-
-  function wrapText(text,max){
-    if(!text||text.length<=max) return [text];
-    // 공백 기준으로 자르기, 없으면 강제 분리
-    const sp=text.lastIndexOf(' ',max);
-    if(sp<1) return [text.slice(0,max),text.slice(max)];
-    return [text.slice(0,sp),text.slice(sp+1)];
-  }
-
-  function showToast(){
-    const t=document.getElementById('toast');
-    t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000);
-  }
-
+}
+function renderPicker(){
+  document.getElementById('tp-hh').textContent = pad2(tpH);
+  document.getElementById('tp-mm').textContent = pad2(tpM);
+}
+function adjH(d){ tpH=(tpH+d+24)%24; renderPicker(); }
+function adjM(d){ tpM=(tpM+d+60)%60; renderPicker(); }
+function applyTime(){
+  const real = new Date();
+  const target = new Date(real);
+  target.setHours(tpH, tpM, real.getSeconds(), real.getMilliseconds());
+  timeOffset = target - real;
+  panelOpen = false;
+  document.getElementById('time-panel').classList.remove('open');
   updateClock();
-  setInterval(updateClock,1000);
-  document.getElementById('serial-text').textContent=currentSerial;
-  checkAndStart();
-  setInterval(getLocation,60000);
+}
+function resetTime(){
+  timeOffset = 0; tpH = new Date().getHours(); tpM = new Date().getMinutes();
+  renderPicker(); updateClock();
+}
+
+// ════ 위치 ════
+async function getLocation(){
+  if(!navigator.geolocation){ setLoc('위치 정보 미지원'); return; }
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const {latitude:lat,longitude:lng} = pos.coords;
+    setLoc(`${lat.toFixed(4)}°N ${lng.toFixed(4)}°E`);
+    try{
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=ko`,
+        {headers:{'User-Agent':'timemark-camera/1.0'}}
+      );
+      if(!res.ok) throw 0;
+      const a = (await res.json()).address||{};
+      const p=[];
+      const sido = a.province||a.state||''; if(sido) p.push(sido);
+      const sigun = a.city||a.county||''; if(sigun&&sigun!==sido) p.push(sigun);
+      const gu = a.city_district||a.borough||''; if(gu) p.push(gu);
+      const eup = a.town||a.township||''; if(eup) p.push(eup);
+      const dong = a.suburb||a.village||a.hamlet||a.neighbourhood||''; if(dong) p.push(dong);
+      if(a.road) p.push(a.road);
+      if(a.house_number) p.push(a.house_number);
+      if(p.length) setLoc(p.join(' '));
+    }catch(e){}
+  }, err=>{
+    setLoc({1:'위치 권한 거부됨',2:'위치 신호 없음',3:'위치 시간 초과'}[err.code]||'위치 오류');
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
+function setLoc(t){ currentLocation=t; document.getElementById('tm-loc').textContent=t; }
+
+// ════ 카메라 ════
+function hideGuide(){ document.getElementById('https-guide').style.display='none'; startCamera(); getLocation(); }
+function checkAndStart(){
+  const ok=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+  if(!ok){ document.getElementById('https-guide').style.display='flex'; return; }
+  startCamera(); getLocation();
+}
+async function startCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){ showErr('카메라 API 미지원'); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false
+    });
+    document.getElementById('video').srcObject=stream;
+  }catch(e){
+    if(e.name==='OverconstrainedError'){
+      try{ document.getElementById('video').srcObject=await navigator.mediaDevices.getUserMedia({video:true,audio:false}); return; }catch(e2){}
+    }
+    showErr({'NotAllowedError':'⚠️ 카메라 권한 거부\n주소창 자물쇠 → 카메라 허용 후 새로고침',
+             'NotFoundError':'카메라를 찾을 수 없습니다.',
+             'NotReadableError':'카메라가 다른 앱에서 사용 중입니다.'}[e.name]||`오류: ${e.name}`);
+  }
+}
+function showErr(m){ const b=document.getElementById('err-banner'); b.textContent=m; b.style.display='block'; }
+
+// ════════════════════════════════════════════════
+//  촬영 + Canvas 렌더
+//  핵심: HTML DOM 요소의 실제 크기/위치를 getBoundingClientRect로
+//        읽어서 Canvas에 동일 비율로 재현
+// ════════════════════════════════════════════════
+function takePhoto(){
+  const video=document.getElementById('video'), canvas=document.getElementById('canvas');
+  if(!video.srcObject||video.readyState<2){ showErr('카메라가 준비되지 않았습니다.'); return; }
+
+  currentSerial = genSerial();
+  document.getElementById('serial-a').textContent = currentSerial;
+
+  const VW = video.videoWidth  || 1920;
+  const VH = video.videoHeight || 1080;
+  canvas.width=VW; canvas.height=VH;
+
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,0,0,VW,VH);
+
+  // 화면(뷰포트) → Canvas 스케일
+  const SW = window.innerWidth;
+  const SH = window.innerHeight;
+  const scX = VW/SW;
+  const scY = VH/SH;
+
+  drawOnCanvas(ctx, VW, VH, scX, scY, SW, SH);
+
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const now=displayNow();
+    a.href=url;
+    a.download=`timemark_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}.jpg`;
+    a.click(); URL.revokeObjectURL(url);
+  },'image/jpeg',0.95);
+
+  showToast('📸 저장되었습니다');
+}
+
+function drawOnCanvas(ctx, VW, VH, scX, scY, SW, SH){
+  const now = displayNow();
+  const hh  = pad2(now.getHours());
+  const mm  = pad2(now.getMinutes());
+  const dateStr = `${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
+  const dayStr  = DAYS[now.getDay()];
+
+  ctx.save();
+  ctx.textBaseline='alphabetic';
+
+  // ── 레이아웃 기준값 (HTML과 동일한 px, Canvas 스케일 적용) ──
+  // HTML에서 bottom:112px, left:18px 기준
+  const padL   = 18  * scX;
+  const padR   = 18  * scX;
+  const botPx  = 112 * scY;   // 셔터영역 상단
+  const baseY  = VH - botPx;  // 시계 하단 기준선
+
+  // 폰트 크기 (HTML: 68px)
+  const cSz    = 68 * scY;
+  // 경계선/날짜블록 높이 (HTML: 62px)
+  const barH   = 62 * scY;
+  const barBot = baseY;
+  const barTop = barBot - barH;
+
+  ctx.shadowColor='rgba(0,0,0,0.7)';
+
+  // ── 시계 숫자 (scaleY 1.15, 하단 고정) ──
+  const sY = 1.15;
+  ctx.save();
+  ctx.setTransform(scX, 0, 0, scY*sY, 0, baseY*(1 - scY*sY/scY));
+
+  // 위 setTransform은 복잡하므로 단순하게:
+  ctx.restore();
+  ctx.save();
+
+  // scaleY를 하단 기준으로: translate → scale → translate back
+  ctx.translate(0, baseY);
+  ctx.scale(1, sY);
+  ctx.translate(0, -baseY);
+
+  ctx.font = `900 ${cSz}px ${FONT}`;
+  ctx.fillStyle='#fff';
+  ctx.textBaseline='alphabetic';
+  ctx.shadowBlur = 8*scX;
+
+  const hhW = ctx.measureText(hh).width;
+  const mmW = ctx.measureText(mm).width;
+  const dotSz  = 7  * scX;
+  const dotGap = 6  * scX;
+  const cPad   = 5  * scX;
+
+  // HH
+  ctx.fillText(hh, padL, baseY);
+
+  // 사각형 콜론 (하단 기준)
+  const colonX = padL + hhW + cPad;
+  const dot2Y  = baseY - 7  * scY;
+  const dot1Y  = dot2Y - dotGap - dotSz;
+  ctx.shadowBlur=0;
+  ctx.fillRect(colonX, dot1Y, dotSz, dotSz);
+  ctx.fillRect(colonX, dot2Y, dotSz, dotSz);
+  ctx.shadowBlur=8*scX;
+
+  // MM
+  const mmX = colonX + dotSz + cPad;
+  ctx.fillText(mm, mmX, baseY);
+  const timeEndX = mmX + mmW;
+
+  ctx.restore();  // scaleY 해제
+
+  // ── 노란 경계선 ──
+  const divX = timeEndX + 13*scX;
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#f0c040';
+  ctx.fillRect(divX, barTop, 3*scX, barH);
+  ctx.shadowBlur=8*scX;
+  ctx.fillStyle='#fff';
+
+  // ── 날짜(경계선 상단) / 요일(경계선 하단) ──
+  const dateX  = divX + 3*scX + 13*scX;
+  const dateSz = 19 * scY;
+  ctx.font = `400 ${dateSz}px ${FONT}`;
+
+  // 날짜: 경계선 상단에서 dateSz만큼 아래 (textBaseline=alphabetic)
+  ctx.textBaseline='top';
+  ctx.fillText(dateStr, dateX, barTop + 2*scY);
+
+  // 요일: 경계선 하단에 붙도록
+  ctx.textBaseline='alphabetic';
+  ctx.fillText(dayStr, dateX, barBot);
+
+  // ── 위치 ──
+  const locSz = 15 * scY;
+  ctx.font = `400 ${locSz}px ${FONT}`;
+  ctx.shadowBlur = 6*scX;
+  ctx.textBaseline='top';
+  const locY = baseY + 6*scY;
+  wrapLoc(currentLocation, ctx, VW*0.75).forEach((line,i)=>{
+    ctx.fillText(line, padL, locY + i*locSz*1.55);
+  });
+
+  // ── 우측 하단 브랜드 ──
+  const bSz = 18 * scY;
+  const bX  = VW - padR;
+  ctx.textAlign='right'; ctx.textBaseline='alphabetic';
+  ctx.shadowBlur=5*scX;
+
+  ctx.font=`700 ${bSz}px ${FONT}`;
+  ctx.fillStyle='#f0c040';
+  const mkW2=ctx.measureText('마크').width;
+  ctx.fillText('타임', bX-mkW2, baseY);
+
+  ctx.font=`400 ${bSz}px ${FONT}`;
+  ctx.fillStyle='#fff';
+  ctx.fillText('마크', bX, baseY);
+
+  const subSz = 12*scY;
+  ctx.font=`300 ${subSz}px ${FONT}`;
+  ctx.fillStyle='rgba(255,255,255,0.88)';
+  ctx.textBaseline='top';
+  ctx.fillText('시간 · 위치 인증됨', bX, baseY+4*scY);
+
+  // ── 우측 세로 시리얼 ──
+  ctx.save();
+  ctx.translate(VW - 11*scX, VH*0.5);
+  ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowBlur=4*scX;
+
+  const sSz = 10.5 * scX;
+  ctx.font=`300 ${sSz}px ${FONT}`;
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+
+  const serialStr = `${currentSerial}  Timemark Verified`;
+  const totalW    = ctx.measureText(serialStr).width;
+  ctx.fillText(serialStr, 0, 0);
+
+  // 방패 아이콘: rotate(-PI/2) 공간에서 rotate(+PI/2) = 텍스트와 같은 방향
+  const iconX = -(totalW/2) - 13*scX;
+  ctx.save();
+  ctx.translate(iconX, 0);
+  ctx.rotate(Math.PI/2);
+
+  const sh=5*scX, sw=sh*0.88, sx=-sw/2, sy=-sh/2;
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=0.9*scX;
+  ctx.fillStyle='rgba(255,255,255,0.07)';
+  ctx.beginPath();
+  ctx.moveTo(sx+sw*0.5,sy); ctx.lineTo(sx+sw,sy+sh*0.25); ctx.lineTo(sx+sw,sy+sh*0.55);
+  ctx.quadraticCurveTo(sx+sw,sy+sh,sx+sw*0.5,sy+sh); ctx.quadraticCurveTo(sx,sy+sh,sx,sy+sh*0.55);
+  ctx.lineTo(sx,sy+sh*0.25); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.strokeStyle='rgba(255,255,255,0.6)';
+  ctx.lineWidth=0.9*scX; ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.moveTo(sx+sw*0.25,sy+sh*0.52); ctx.lineTo(sx+sw*0.44,sy+sh*0.70); ctx.lineTo(sx+sw*0.75,sy+sh*0.34);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.restore();
+  ctx.restore();
+}
+
+// 위치 텍스트 줄바꿈 (px 너비 기준)
+function wrapLoc(text, ctx, maxW){
+  if(!text) return [''];
+  const words=text.split(' ');
+  const lines=[]; let cur='';
+  for(const w of words){
+    const test=cur?cur+' '+w:w;
+    if(ctx.measureText(test).width>maxW && cur){ lines.push(cur); cur=w; }
+    else cur=test;
+  }
+  if(cur) lines.push(cur);
+  return lines.slice(0,2);
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ════ 초기화 ════
+document.getElementById('serial-a').textContent=currentSerial;
+updateClock();
+setInterval(updateClock,1000);
+checkAndStart();
+setInterval(getLocation,60000);
 </script>
 </body>
 </html>
