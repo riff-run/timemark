@@ -7,88 +7,41 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body {
-  background:#000; width:100vw; height:100dvh;
-  overflow:hidden; user-select:none;
-  font-family:'Noto Sans KR',sans-serif;
-}
-
+body { background:#000; width:100vw; height:100dvh; overflow:hidden; user-select:none; font-family:'Noto Sans KR',sans-serif; }
 #wrap { position:relative; width:100%; height:100%; }
-
-/* ── 비디오: 비율에 따라 크기 조정 ── */
-#video {
-  position:absolute; top:50%; left:50%;
-  transform:translate(-50%,-50%);
-  object-fit:cover;
-  /* 기본: Full */
-  width:100%; height:100%;
-}
-
+#video { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); object-fit:cover; width:100%; height:100%; }
 #canvas { display:none; }
+#overlay { position:absolute; inset:0; pointer-events:none; }
 
-/* ── 오버레이 ── */
-#overlay {
-  position:absolute; inset:0; pointer-events:none;
-}
-
-/* ════ 좌하단 타임마크 블록 ════ */
+/* ════ 좌하단 블록 ════ */
 #tm-block {
   position:absolute;
-  /* 셔터바(~100px) 바로 위 + 여백 */
-  bottom:108px;
-  left:16px;
+  bottom:108px; left:16px;
 }
 
-/* 시간+경계선+날짜 */
+/* 시간+경계선+날짜 한 줄 */
 #tm-row {
   display:flex;
-  align-items:flex-end;
+  align-items:flex-end;   /* 모두 하단 기준 */
+  line-height:1;
   margin-bottom:7px;
 }
 
-/* 시계 숫자 wrapper */
-#tm-clock {
-  display:flex;
-  align-items:flex-end;
-  /* 세로 늘이기: scaleY, 하단 고정 */
-  transform:scaleY(1.18);
-  transform-origin:bottom left;
+/* ── 시계: canvas로 그리기 위해 실제 DOM은 숨기고 크기만 확보 ── */
+/* scaleY 문제 완전 제거: 시계는 inline canvas로 직접 그림 */
+#clock-canvas {
+  display:block;
+  /* 높이는 JS에서 설정 */
+  align-self:flex-end;
 }
 
-.tm-digit {
-  font-size:clamp(52px,14.5vw,78px);
-  font-weight:900;
-  color:#fff;
-  line-height:1;
-  letter-spacing:-2px;
-  text-shadow:0 2px 10px rgba(0,0,0,0.8);
-  font-variant-numeric:tabular-nums;
-}
-
-/* 사각형 콜론: 숫자 하단부 */
-#tm-colon {
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:flex-end;
-  /* 콜론 높이 = 숫자의 약 60% 지점까지만 */
-  height:clamp(32px,8.5vw,46px);
-  padding:0 clamp(3px,0.8vw,6px) clamp(5px,1.3vw,8px);
-  gap:clamp(4px,1.1vw,6px);
-}
-.tm-dot {
-  width:clamp(5px,1.4vw,8px);
-  height:clamp(5px,1.4vw,8px);
-  background:#fff; border-radius:1px;
-  box-shadow:0 1px 4px rgba(0,0,0,0.6);
-  display:block; flex-shrink:0;
-}
-
-/* 노란 경계선: 시계 scaleY 적용 후 실제 높이와 맞춤 */
+/* 노란 경계선 */
 #tm-divider {
   width:3px;
-  height:clamp(55px,15.3vw,82px);
+  height:64px;
   background:#f0c040;
   border-radius:2px;
-  margin:0 clamp(10px,2.8vw,15px);
+  margin:0 13px;
   flex-shrink:0;
   align-self:flex-end;
 }
@@ -97,21 +50,19 @@ body {
 #tm-date {
   display:flex; flex-direction:column;
   justify-content:space-between;
-  height:clamp(55px,15.3vw,82px);
+  height:64px;
   align-self:flex-end;
   padding:1px 0;
 }
 .tm-date-line {
-  font-size:clamp(15px,4.2vw,23px);
-  font-weight:400; color:#fff;
+  font-size:18px; font-weight:400; color:#fff;
   white-space:nowrap; line-height:1;
   text-shadow:0 1px 8px rgba(0,0,0,0.8);
 }
 
 /* 위치 */
 #tm-loc {
-  font-size:clamp(13px,3.6vw,19px);
-  font-weight:400; color:#fff;
+  font-size:14px; font-weight:400; color:#fff;
   line-height:1.5;
   text-shadow:0 1px 8px rgba(0,0,0,0.8);
   max-width:78vw;
@@ -119,15 +70,13 @@ body {
 
 /* ════ 우측 하단 브랜드 ════ */
 #tm-brand {
-  position:absolute;
-  bottom:108px; right:16px;
-  text-align:right;
-  line-height:1.5;
+  position:absolute; bottom:108px; right:16px;
+  text-align:right; line-height:1.5;
   text-shadow:0 1px 6px rgba(0,0,0,0.7);
 }
-#tm-brand-name { font-size:clamp(13px,3.6vw,20px); font-weight:400; color:#fff; }
+#tm-brand-name { font-size:17px; font-weight:400; color:#fff; }
 #tm-brand-name .hl { color:#f0c040; font-weight:700; }
-#tm-brand-sub { font-size:clamp(10px,2.6vw,14px); font-weight:300; color:rgba(255,255,255,0.88); }
+#tm-brand-sub { font-size:11px; font-weight:300; color:rgba(255,255,255,0.88); }
 
 /* ════ 우측 세로 시리얼 ════ */
 #tm-serial {
@@ -137,79 +86,57 @@ body {
   display:flex; flex-direction:row;
   align-items:center; gap:5px;
   color:rgba(255,255,255,0.8);
-  font-size:clamp(8px,1.9vw,11px);
-  font-weight:300; letter-spacing:0.3px;
+  font-size:10px; font-weight:300; letter-spacing:0.3px;
   text-shadow:0 1px 3px rgba(0,0,0,0.5);
   white-space:nowrap;
 }
+/* writing-mode vertical + rotate(180deg) 환경에서
+   방패가 텍스트 읽는 방향(위→아래)으로 보이려면
+   rotate(-90deg) 추가: 화면 기준 위쪽을 향함 */
 #tm-serial svg {
-  width:clamp(6px,1.5vw,9px);
-  height:clamp(7px,1.7vw,10px);
-  flex-shrink:0; opacity:0.6;
-  transform:rotate(90deg);
+  width:8px; height:9px; flex-shrink:0; opacity:0.6;
+  transform:rotate(-90deg);
 }
 
 /* ════ 셔터 + 컨트롤 바 ════ */
 #ctrl-bar {
-  position:absolute; bottom:0; left:0; right:0;
-  height:100px;
+  position:absolute; bottom:0; left:0; right:0; height:100px;
   background:rgba(0,0,0,0.45);
-  display:flex; align-items:center;
-  justify-content:space-between;
-  padding:0 24px;
-  pointer-events:all;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px; pointer-events:all;
 }
-
-/* 비율 버튼 그룹 */
-#ratio-btns {
-  display:flex; flex-direction:column; gap:5px;
-}
+#ratio-btns { display:flex; flex-direction:column; gap:5px; }
 .ratio-btn {
-  background:rgba(255,255,255,0.1);
-  border:1.5px solid rgba(255,255,255,0.3);
-  color:rgba(255,255,255,0.7);
-  font-size:10px; font-weight:700;
-  padding:4px 7px; border-radius:6px;
-  cursor:pointer; font-family:'Noto Sans KR',sans-serif;
-  -webkit-tap-highlight-color:transparent;
-  transition:all 0.15s;
+  background:rgba(255,255,255,0.1); border:1.5px solid rgba(255,255,255,0.3);
+  color:rgba(255,255,255,0.7); font-size:10px; font-weight:700;
+  padding:4px 8px; border-radius:6px; cursor:pointer;
+  font-family:'Noto Sans KR',sans-serif;
+  -webkit-tap-highlight-color:transparent; transition:all 0.15s;
 }
-.ratio-btn.active {
-  background:#f0c040; border-color:#f0c040;
-  color:#000;
-}
+.ratio-btn.active { background:#f0c040; border-color:#f0c040; color:#000; }
 
-/* 셔터 */
 #shutter-btn {
   width:72px; height:72px; border-radius:50%;
   background:rgba(255,255,255,0.15); border:3.5px solid #fff;
   cursor:pointer; display:flex; align-items:center; justify-content:center;
   transition:transform 0.1s; -webkit-tap-highlight-color:transparent;
-  flex-shrink:0;
 }
 #shutter-btn:active { transform:scale(0.9); }
 #shutter-inner { width:55px; height:55px; border-radius:50%; background:#fff; }
 
-/* 시간 조정 버튼 */
 #time-adj-btn {
   width:48px; height:48px; border-radius:50%;
-  background:rgba(255,255,255,0.1);
-  border:2px solid rgba(255,255,255,0.4);
-  color:#fff; font-size:22px;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,0.1); border:2px solid rgba(255,255,255,0.4);
+  color:#fff; font-size:22px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
   -webkit-tap-highlight-color:transparent;
-  flex-shrink:0;
 }
 
-/* ════ 시간 조정 패널 ════ */
+/* ════ 시간 패널 ════ */
 #time-panel {
-  display:none;
-  position:absolute; bottom:100px; left:0; right:0;
-  background:rgba(10,10,10,0.95);
-  padding:16px 22px 18px;
-  border-top:1px solid rgba(255,255,255,0.1);
-  pointer-events:all;
-  z-index:10;
+  display:none; position:absolute; bottom:100px; left:0; right:0;
+  background:rgba(10,10,10,0.95); padding:16px 22px 18px;
+  border-top:1px solid rgba(255,255,255,0.1); pointer-events:all; z-index:10;
 }
 #time-panel.open { display:block; }
 #tp-title { font-size:12px; color:rgba(255,255,255,0.5); text-align:center; margin-bottom:14px; }
@@ -219,41 +146,18 @@ body {
 .tp-val { font-size:40px; font-weight:900; color:#fff; line-height:1; min-width:62px; text-align:center; font-variant-numeric:tabular-nums; }
 .tp-sep { font-size:36px; font-weight:900; color:#fff; padding-bottom:2px; }
 .tp-row2 { display:flex; gap:8px; margin-top:4px; }
-.tp-b {
-  width:38px; height:38px; border-radius:50%;
-  background:rgba(255,255,255,0.1);
-  border:1.5px solid rgba(255,255,255,0.2);
-  color:#fff; font-size:20px;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  -webkit-tap-highlight-color:transparent;
-}
+.tp-b { width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.1); border:1.5px solid rgba(255,255,255,0.2); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; -webkit-tap-highlight-color:transparent; }
 .tp-b:active { background:rgba(255,255,255,0.25); }
 #tp-actions { display:flex; gap:10px; margin-top:14px; }
 .tp-act { flex:1; padding:11px; border-radius:10px; border:none; font-size:14px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; }
 #tp-reset-btn { background:rgba(255,255,255,0.1); color:#fff; }
 #tp-apply-btn { background:#f0c040; color:#000; }
 
-/* ════ 에러/토스트 ════ */
-#err-banner {
-  display:none; position:absolute; top:0; left:0; right:0;
-  background:rgba(160,20,20,0.92); color:#fff;
-  font-size:13px; line-height:1.6; padding:12px 16px;
-  text-align:center; z-index:99; white-space:pre-line;
-}
-#toast {
-  position:absolute; top:44px; left:50%; transform:translateX(-50%);
-  background:rgba(0,0,0,0.8); color:#fff;
-  padding:10px 22px; border-radius:20px; font-size:14px;
-  opacity:0; transition:opacity 0.3s; white-space:nowrap; pointer-events:none; z-index:50;
-}
+/* ════ 에러/토스트/가이드 ════ */
+#err-banner { display:none; position:absolute; top:0; left:0; right:0; background:rgba(160,20,20,0.92); color:#fff; font-size:13px; line-height:1.6; padding:12px 16px; text-align:center; z-index:99; white-space:pre-line; }
+#toast { position:absolute; top:44px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 22px; border-radius:20px; font-size:14px; opacity:0; transition:opacity 0.3s; white-space:nowrap; pointer-events:none; z-index:50; }
 #toast.show { opacity:1; }
-
-/* ════ HTTPS 안내 ════ */
-#guide {
-  display:none; position:absolute; inset:0;
-  background:#0a0a0a; color:#fff;
-  flex-direction:column; z-index:200; pointer-events:all; overflow-y:auto;
-}
+#guide { display:none; position:absolute; inset:0; background:#0a0a0a; color:#fff; flex-direction:column; z-index:200; pointer-events:all; overflow-y:auto; }
 .g-hd { background:#111; padding:28px 22px 16px; border-bottom:1px solid #222; text-align:center; }
 .g-hd h2 { font-size:20px; font-weight:700; color:#f0c040; margin-bottom:8px; }
 .g-hd p { font-size:13px; color:rgba(255,255,255,0.7); line-height:1.6; }
@@ -275,19 +179,15 @@ body {
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
-  <!-- HTTPS 안내 -->
   <div id="guide">
-    <div class="g-hd">
-      <h2>📱 카메라 사용 방법</h2>
-      <p>갤럭시 크롬에서 카메라를 쓰려면<br>https:// 주소로 접속해야 합니다.</p>
-    </div>
+    <div class="g-hd"><h2>📱 카메라 사용 방법</h2><p>갤럭시 크롬에서 카메라를 쓰려면<br>https:// 주소로 접속해야 합니다.</p></div>
     <div class="g-body">
       <div class="g-card">
         <span class="g-badge">GitHub 파일 업데이트</span>
         <div class="g-title">🌐 기존 파일 교체 방법</div>
         <div class="g-steps">
           <div class="g-step"><div class="g-num">1</div><p><b>github.com/riff-run/timemark</b> 접속</p></div>
-          <div class="g-step"><div class="g-num">2</div><p>파일 클릭 → ✏️ → 전체선택(Ctrl+A) → 새 코드 붙여넣기</p></div>
+          <div class="g-step"><div class="g-num">2</div><p>파일 클릭 → ✏️ → Ctrl+A → 새 코드 붙여넣기</p></div>
           <div class="g-step"><div class="g-num">3</div><p><b>Commit changes</b> → 1~2분 후 반영</p></div>
         </div>
         <div class="g-url">https://riff-run.github.io/timemark/timemark-camera.html</div>
@@ -296,9 +196,7 @@ body {
     <button class="g-ok" onclick="hideGuide()">이미 https:// 주소입니다 → 시작</button>
   </div>
 
-  <!-- 오버레이 -->
   <div id="overlay">
-
     <!-- 우측 세로 시리얼 -->
     <div id="tm-serial">
       <svg viewBox="0 0 14 16" fill="none">
@@ -314,14 +212,8 @@ body {
     <!-- 좌하단 -->
     <div id="tm-block">
       <div id="tm-row">
-        <div id="tm-clock">
-          <span class="tm-digit" id="d-hh">00</span>
-          <span id="tm-colon">
-            <span class="tm-dot"></span>
-            <span class="tm-dot"></span>
-          </span>
-          <span class="tm-digit" id="d-mm">00</span>
-        </div>
+        <!-- 시계: inline canvas로 그림 (scaleY 문제 없음) -->
+        <canvas id="clock-canvas"></canvas>
         <div id="tm-divider"></div>
         <div id="tm-date">
           <div class="tm-date-line" id="d-date">2026년09월10일</div>
@@ -336,11 +228,9 @@ body {
       <div id="tm-brand-name"><span class="hl">타임</span>마크</div>
       <div id="tm-brand-sub">시간 · 위치 인증됨</div>
     </div>
-
     <div id="toast"></div>
   </div>
 
-  <!-- 시간 조정 패널 -->
   <div id="time-panel">
     <div id="tp-title">⏱ 표시 시간 조정</div>
     <div id="tp-row">
@@ -369,21 +259,14 @@ body {
   </div>
 
   <div id="err-banner"></div>
-
-  <!-- 컨트롤 바 -->
   <div id="ctrl-bar">
-    <!-- 좌: 비율 선택 -->
     <div id="ratio-btns">
-      <button class="ratio-btn" onclick="setRatio('full')">Full</button>
+      <button class="ratio-btn active" onclick="setRatio('full')">Full</button>
       <button class="ratio-btn" onclick="setRatio('16:9')">16:9</button>
       <button class="ratio-btn" onclick="setRatio('4:3')">4:3</button>
       <button class="ratio-btn" onclick="setRatio('1:1')">1:1</button>
     </div>
-    <!-- 중: 셔터 -->
-    <button id="shutter-btn" onclick="takePhoto()">
-      <div id="shutter-inner"></div>
-    </button>
-    <!-- 우: 시간 조정 -->
+    <button id="shutter-btn" onclick="takePhoto()"><div id="shutter-inner"></div></button>
     <button id="time-adj-btn" onclick="togglePanel()">⏱</button>
   </div>
 </div>
@@ -392,385 +275,359 @@ body {
 const DAYS = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
 const FONT = "'Noto Sans KR',sans-serif";
 
+// ── 시계 canvas 설정 ──
+// scaleY(1.18)을 CSS 대신 canvas setTransform으로 처리
+// → getBoundingClientRect가 정확한 실제 크기 반환
+const CLOCK_FONT_PX = 64;   // 기준 폰트 크기 (px)
+const CLOCK_SCALE_Y = 1.18; // 세로 늘이기 배율
+const CLOCK_H = Math.round(CLOCK_FONT_PX * CLOCK_SCALE_Y); // 실제 높이 = 75px
+const BAR_H   = 64;         // 경계선 높이 (px) — CLOCK_FONT_PX와 동일
+
 let currentLocation = '위치 불러오는 중...';
 let currentSerial   = genSerial();
 let timeOffset      = 0;
 let panelOpen       = false;
 let tpH = 0, tpM = 0;
-let currentRatio    = 'full';   // 현재 비율
+let currentRatio    = 'full';
 
-// ── 비율 설정 ──
-const RATIOS = { 'full': null, '16:9': 16/9, '4:3': 4/3, '1:1': 1 };
-
-function setRatio(r) {
-  currentRatio = r;
-  document.querySelectorAll('.ratio-btn').forEach(b => b.classList.toggle('active', b.textContent === r));
-  applyRatio();
-}
-
-function applyRatio() {
-  const video = document.getElementById('video');
-  const vw = window.innerWidth, vh = window.innerHeight - 100; // 컨트롤바 제외
-  const ratio = RATIOS[currentRatio];
-
-  if (!ratio) {
-    // Full: 화면 전체
-    video.style.width  = '100%';
-    video.style.height = '100%';
-    video.style.top    = '50%';
-    video.style.left   = '50%';
-    video.style.transform = 'translate(-50%,-50%)';
-  } else {
-    // 비율에 맞게 검정 레터박스
-    let w, h;
-    if (vw / vh > ratio) { h = vh; w = h * ratio; }
-    else                  { w = vw; h = w / ratio; }
-    video.style.width  = w + 'px';
-    video.style.height = h + 'px';
-    video.style.top    = '50%';
-    video.style.left   = '50%';
-    video.style.transform = 'translate(-50%,-50%)';
-  }
-}
-
-function pad2(n) { return String(n).padStart(2,'0'); }
 function genSerial() {
   const c='ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
   let s=''; for(let i=0;i<14;i++) s+=c[Math.floor(Math.random()*c.length)]; return s;
 }
-function displayNow() { return new Date(Date.now() + timeOffset); }
+function pad2(n) { return String(n).padStart(2,'0'); }
+function displayNow() { return new Date(Date.now()+timeOffset); }
 
-// ── 시계 ──
-function updateClock() {
-  const now = displayNow();
-  document.getElementById('d-hh').textContent   = pad2(now.getHours());
-  document.getElementById('d-mm').textContent   = pad2(now.getMinutes());
-  document.getElementById('d-date').textContent = `${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
-  document.getElementById('d-day').textContent  = DAYS[now.getDay()];
-}
+// ════════════════════════════
+//  inline clock-canvas 렌더
+//  scaleY를 canvas transform으로 처리 → DOM 크기가 정확함
+// ════════════════════════════
+function renderClockCanvas(hh, mm) {
+  const cc  = document.getElementById('clock-canvas');
+  const dpr = window.devicePixelRatio || 1;
 
-// ── 시간 조정 패널 ──
-function togglePanel() {
-  panelOpen = !panelOpen;
-  const p = document.getElementById('time-panel');
-  if (panelOpen) {
-    const now = displayNow();
-    tpH = now.getHours(); tpM = now.getMinutes(); renderPicker();
-    p.classList.add('open');
-  } else { p.classList.remove('open'); }
-}
-function renderPicker() {
-  document.getElementById('tp-hh').textContent = pad2(tpH);
-  document.getElementById('tp-mm').textContent = pad2(tpM);
-}
-function adjH(d) { tpH=(tpH+d+24)%24; renderPicker(); }
-function adjM(d) { tpM=(tpM+d+60)%60; renderPicker(); }
-function applyTime() {
-  const real = new Date();
-  const t = new Date(real);
-  t.setHours(tpH, tpM, real.getSeconds(), real.getMilliseconds());
-  timeOffset = t - real;
-  panelOpen = false;
-  document.getElementById('time-panel').classList.remove('open');
-  updateClock();
-}
-function resetTime() {
-  timeOffset = 0;
-  const now = new Date(); tpH = now.getHours(); tpM = now.getMinutes();
-  renderPicker(); updateClock();
-}
+  // 논리 크기 측정 (실제로 그릴 폰트 + 콜론 너비)
+  // 임시 ctx로 폭 측정
+  const tmp = document.createElement('canvas');
+  const tx  = tmp.getContext('2d');
+  tx.font = `900 ${CLOCK_FONT_PX}px ${FONT}`;
+  const hhW = tx.measureText(hh).width;
+  const mmW = tx.measureText(mm).width;
+  const dotSz  = 7;
+  const dotGap = 6;
+  const cPad   = 5;
+  const totalW = Math.ceil(hhW + cPad + dotSz + cPad + mmW + 2);
 
-// ── 위치 ──
-async function getLocation() {
-  if (!navigator.geolocation) { setLoc('위치 정보 미지원'); return; }
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const {latitude:lat, longitude:lng} = pos.coords;
-    setLoc(`${lat.toFixed(4)}°N ${lng.toFixed(4)}°E`);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=ko`,
-        {headers:{'User-Agent':'timemark-camera/1.0'}}
-      );
-      if (!res.ok) throw 0;
-      const a = (await res.json()).address || {};
-      const p = [];
-      const sido  = a.province||a.state||'';           if(sido)  p.push(sido);
-      const sigun = a.city||a.county||'';               if(sigun&&sigun!==sido) p.push(sigun);
-      const gu    = a.city_district||a.borough||'';     if(gu)    p.push(gu);
-      const eup   = a.town||a.township||'';             if(eup)   p.push(eup);
-      const dong  = a.suburb||a.village||a.hamlet||a.neighbourhood||''; if(dong) p.push(dong);
-      if (a.road)         p.push(a.road);
-      if (a.house_number) p.push(a.house_number);
-      if (p.length) setLoc(p.join(' '));
-    } catch(e) {}
-  }, err => {
-    setLoc({1:'위치 권한 거부됨',2:'위치 신호 없음',3:'위치 시간 초과'}[err.code]||'위치 오류');
-  }, {enableHighAccuracy:true, timeout:15000, maximumAge:0});
-}
-function setLoc(t) { currentLocation=t; document.getElementById('tm-loc').textContent=t; }
+  // canvas 물리 크기
+  cc.width  = totalW * dpr;
+  cc.height = CLOCK_H * dpr;
+  // CSS 표시 크기
+  cc.style.width  = totalW + 'px';
+  cc.style.height = CLOCK_H + 'px';
+  cc.style.display = 'block';
+  cc.style.alignSelf = 'flex-end'; // flex 하단 정렬
 
-// ── 카메라 ──
-function hideGuide() { document.getElementById('guide').style.display='none'; startCamera(); getLocation(); }
-function checkAndStart() {
-  const ok = location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1';
-  if (!ok) { document.getElementById('guide').style.display='flex'; return; }
-  startCamera(); getLocation();
-}
-async function startCamera() {
-  if (!navigator.mediaDevices?.getUserMedia) { showErr('카메라 API 미지원'); return; }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'}, width:{ideal:3840}, height:{ideal:2160}}, audio:false
-    });
-    document.getElementById('video').srcObject = stream;
-  } catch(e) {
-    if (e.name==='OverconstrainedError') {
-      try { document.getElementById('video').srcObject = await navigator.mediaDevices.getUserMedia({video:true,audio:false}); return; } catch(e2) {}
-    }
-    showErr({'NotAllowedError':'⚠️ 카메라 권한 거부\n주소창 자물쇠 → 카메라 허용 후 새로고침',
-             'NotFoundError':'카메라를 찾을 수 없습니다.',
-             'NotReadableError':'카메라가 다른 앱에서 사용 중입니다.'}[e.name]||`오류: ${e.name}`);
-  }
-}
-function showErr(m) { const b=document.getElementById('err-banner'); b.textContent=m; b.style.display='block'; }
+  const ctx = cc.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, totalW, CLOCK_H);
 
-// ════════════════════════════════
-//  촬영 & Canvas 렌더링
-//  HTML DOM 요소의 실제 위치를 getBoundingClientRect로 읽어서
-//  Canvas에 동일 비율로 정확히 재현
-// ════════════════════════════════
-function takePhoto() {
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  if (!video.srcObject || video.readyState < 2) { showErr('카메라가 준비되지 않았습니다.'); return; }
-
-  currentSerial = genSerial();
-  document.getElementById('serial-num').textContent = currentSerial;
-
-  const VW = video.videoWidth  || 1920;
-  const VH = video.videoHeight || 1080;
-
-  // 비율에 맞게 캔버스 크기 결정
-  const ratio = RATIOS[currentRatio];
-  let outW = VW, outH = VH;
-  if (ratio) {
-    if (VW / VH > ratio) { outW = Math.round(VH * ratio); outH = VH; }
-    else                  { outH = Math.round(VW / ratio); outW = VW; }
-  }
-  canvas.width  = outW;
-  canvas.height = outH;
-
-  const ctx = canvas.getContext('2d');
-  // 비율 크롭 (중앙)
-  const sx = (VW - outW) / 2;
-  const sy = (VH - outH) / 2;
-  ctx.drawImage(video, sx, sy, outW, outH, 0, 0, outW, outH);
-
-  // 화면 뷰포트 → Canvas 스케일
-  // video 요소의 실제 화면 크기 (레터박스 포함)
-  const vRect = video.getBoundingClientRect();
-  const scX = outW / vRect.width;
-  const scY = outH / vRect.height;
-
-  // 오버레이 요소들의 실제 화면 좌표 → Canvas 좌표로 변환
-  drawOverlayFromDOM(ctx, outW, outH, scX, scY, vRect);
-
-  canvas.toBlob(blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const now = displayNow();
-    a.href = url;
-    a.download = `timemark_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}.jpg`;
-    a.click(); URL.revokeObjectURL(url);
-  }, 'image/jpeg', 0.95);
-
-  showToast('📸 저장되었습니다');
-}
-
-function drawOverlayFromDOM(ctx, CW, CH, scX, scY, vRect) {
-  const now = displayNow();
-  const hh  = pad2(now.getHours()), mm = pad2(now.getMinutes());
-  const dateStr = `${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
-  const dayStr  = DAYS[now.getDay()];
-
+  // scaleY(1.18) — 하단(CLOCK_H) 기준
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.75)';
+  ctx.translate(0, CLOCK_H);
+  ctx.scale(1, CLOCK_SCALE_Y);
+  ctx.translate(0, -CLOCK_H);
 
-  // ── DOM에서 실제 위치 읽기 ──
-  const blockEl   = document.getElementById('tm-block');
-  const clockEl   = document.getElementById('tm-clock');
-  const dividerEl = document.getElementById('tm-divider');
-  const dateEl    = document.getElementById('tm-date');
-  const locEl     = document.getElementById('tm-loc');
-  const brandEl   = document.getElementById('tm-brand');
-  const serialEl  = document.getElementById('tm-serial');
-
-  // getBoundingClientRect → Canvas 좌표로 변환 (video 요소 기준 오프셋 적용)
-  function toC(el) {
-    const r = el.getBoundingClientRect();
-    return {
-      x: (r.left - vRect.left) * scX,
-      y: (r.top  - vRect.top)  * scY,
-      w: r.width  * scX,
-      h: r.height * scY,
-      right:  (r.right  - vRect.left) * scX,
-      bottom: (r.bottom - vRect.top)  * scY,
-    };
-  }
-
-  // ── 시계 ──
-  const cR   = toC(clockEl);
-  const dR   = toC(dividerEl);
-  const dtR  = toC(dateEl);
-  const locR = toC(locEl);
-  const bR   = toC(brandEl);
-  const sR   = toC(serialEl);
-
-  // 폰트 크기: DOM에서 computed style 읽기
-  const cFontPx = parseFloat(getComputedStyle(document.querySelector('.tm-digit')).fontSize) * scY * 1.18;
-  const dFontPx = parseFloat(getComputedStyle(document.querySelector('.tm-date-line')).fontSize) * scY;
-  const lFontPx = parseFloat(getComputedStyle(locEl).fontSize) * scY;
-  const bFontPx = parseFloat(getComputedStyle(document.getElementById('tm-brand-name')).fontSize) * scY;
-  const sFontPx = parseFloat(getComputedStyle(serialEl).fontSize) * scX;
-
-  ctx.shadowBlur = 8 * scX;
-  ctx.fillStyle  = '#fff';
+  ctx.font = `900 ${CLOCK_FONT_PX}px ${FONT}`;
+  ctx.fillStyle = '#fff';
   ctx.textBaseline = 'bottom';
-  ctx.textAlign    = 'left';
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur  = 8;
 
-  // ── 시계 숫자 (scaleY 1.18, 하단=cR.bottom 고정) ──
-  const BASE = cR.bottom;  // 시계 하단 기준선
-  ctx.save();
-  ctx.translate(0, BASE);
-  ctx.scale(1, 1.18);
-  ctx.translate(0, -BASE);
-
-  ctx.font = `900 ${cFontPx / 1.18}px ${FONT}`;
-  const hhW  = ctx.measureText(hh).width;
-  const mmW  = ctx.measureText(mm).width;
-  const dotSz  = 7  * scX;
-  const dotGap = 6  * scX;
-  const cPad   = 5  * scX;
-
-  ctx.fillText(hh, cR.x, BASE);
-  const colonX = cR.x + hhW + cPad;
-  const dot2Y  = BASE - 7 * scY;
+  // HH
+  ctx.fillText(hh, 0, CLOCK_H);
+  // 콜론
+  const colonX = hhW + cPad;
+  const dot2Y  = CLOCK_H - 7;
   const dot1Y  = dot2Y - dotGap - dotSz;
   ctx.shadowBlur = 0;
   ctx.fillRect(colonX, dot1Y, dotSz, dotSz);
   ctx.fillRect(colonX, dot2Y, dotSz, dotSz);
-  ctx.shadowBlur = 8 * scX;
-  ctx.fillText(mm, colonX + dotSz + cPad, BASE);
+  ctx.shadowBlur = 8;
+  // MM
+  ctx.fillText(mm, colonX + dotSz + cPad, CLOCK_H);
+
+  ctx.restore();
+}
+
+// ── 시계+날짜 업데이트 ──
+function updateClock() {
+  const now = displayNow();
+  const hh  = pad2(now.getHours()), mm = pad2(now.getMinutes());
+  renderClockCanvas(hh, mm);
+  document.getElementById('d-date').textContent = `${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
+  document.getElementById('d-day').textContent  = DAYS[now.getDay()];
+}
+
+// ── 비율 ──
+const RATIOS = { 'full':null, '16:9':16/9, '4:3':4/3, '1:1':1 };
+function setRatio(r) {
+  currentRatio = r;
+  document.querySelectorAll('.ratio-btn').forEach(b => b.classList.toggle('active', b.textContent===r));
+  applyRatio();
+}
+function applyRatio() {
+  const video = document.getElementById('video');
+  const ratio = RATIOS[currentRatio];
+  if (!ratio) { video.style.width='100%'; video.style.height='100%'; return; }
+  const vw=window.innerWidth, vh=window.innerHeight-100;
+  let w,h;
+  if(vw/vh>ratio){h=vh;w=h*ratio;}else{w=vw;h=w/ratio;}
+  video.style.width=w+'px'; video.style.height=h+'px';
+}
+
+// ── 시간 패널 ──
+function togglePanel() {
+  panelOpen=!panelOpen;
+  const p=document.getElementById('time-panel');
+  if(panelOpen){const now=displayNow();tpH=now.getHours();tpM=now.getMinutes();renderPicker();p.classList.add('open');}
+  else p.classList.remove('open');
+}
+function renderPicker(){document.getElementById('tp-hh').textContent=pad2(tpH);document.getElementById('tp-mm').textContent=pad2(tpM);}
+function adjH(d){tpH=(tpH+d+24)%24;renderPicker();}
+function adjM(d){tpM=(tpM+d+60)%60;renderPicker();}
+function applyTime(){const r=new Date(),t=new Date(r);t.setHours(tpH,tpM,r.getSeconds(),r.getMilliseconds());timeOffset=t-r;panelOpen=false;document.getElementById('time-panel').classList.remove('open');updateClock();}
+function resetTime(){timeOffset=0;const n=new Date();tpH=n.getHours();tpM=n.getMinutes();renderPicker();updateClock();}
+
+// ── 위치 ──
+async function getLocation() {
+  if(!navigator.geolocation){setLoc('위치 정보 미지원');return;}
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const {latitude:lat,longitude:lng}=pos.coords;
+    setLoc(`${lat.toFixed(4)}°N ${lng.toFixed(4)}°E`);
+    try{
+      const res=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1&accept-language=ko`,{headers:{'User-Agent':'timemark-camera/1.0'}});
+      if(!res.ok)throw 0;
+      const a=(await res.json()).address||{};
+      const p=[];
+      const sido=a.province||a.state||''; if(sido)p.push(sido);
+      const sigun=a.city||a.county||''; if(sigun&&sigun!==sido)p.push(sigun);
+      const gu=a.city_district||a.borough||''; if(gu)p.push(gu);
+      const eup=a.town||a.township||''; if(eup)p.push(eup);
+      const dong=a.suburb||a.village||a.hamlet||a.neighbourhood||''; if(dong)p.push(dong);
+      if(a.road)p.push(a.road); if(a.house_number)p.push(a.house_number);
+      if(p.length)setLoc(p.join(' '));
+    }catch(e){}
+  },err=>{setLoc({1:'위치 권한 거부됨',2:'위치 신호 없음',3:'위치 시간 초과'}[err.code]||'위치 오류');},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
+function setLoc(t){currentLocation=t;document.getElementById('tm-loc').textContent=t;}
+
+// ── 카메라 ──
+function hideGuide(){document.getElementById('guide').style.display='none';startCamera();getLocation();}
+function checkAndStart(){
+  const ok=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+  if(!ok){document.getElementById('guide').style.display='flex';return;}
+  startCamera();getLocation();
+}
+async function startCamera(){
+  if(!navigator.mediaDevices?.getUserMedia){showErr('카메라 API 미지원');return;}
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false});
+    document.getElementById('video').srcObject=s;
+  }catch(e){
+    if(e.name==='OverconstrainedError'){try{document.getElementById('video').srcObject=await navigator.mediaDevices.getUserMedia({video:true,audio:false});return;}catch(e2){}}
+    showErr({'NotAllowedError':'⚠️ 카메라 권한 거부\n주소창 자물쇠 → 카메라 허용 후 새로고침','NotFoundError':'카메라를 찾을 수 없습니다.','NotReadableError':'카메라가 다른 앱에서 사용 중입니다.'}[e.name]||`오류: ${e.name}`);
+  }
+}
+function showErr(m){const b=document.getElementById('err-banner');b.textContent=m;b.style.display='block';}
+
+// ════════════════════════════════════════════
+//  촬영 & Canvas 렌더
+//  getBoundingClientRect로 DOM 실제 좌표 읽기
+//  clock-canvas는 이미 정확한 크기를 가짐
+// ════════════════════════════════════════════
+function takePhoto(){
+  const video=document.getElementById('video'),canvas=document.getElementById('canvas');
+  if(!video.srcObject||video.readyState<2){showErr('카메라가 준비되지 않았습니다.');return;}
+
+  currentSerial=genSerial();
+  document.getElementById('serial-num').textContent=currentSerial;
+
+  const VW=video.videoWidth||1920, VH=video.videoHeight||1080;
+  const ratio=RATIOS[currentRatio];
+  let outW=VW,outH=VH;
+  if(ratio){if(VW/VH>ratio){outW=Math.round(VH*ratio);outH=VH;}else{outH=Math.round(VW/ratio);outW=VW;}}
+  canvas.width=outW; canvas.height=outH;
+
+  const ctx=canvas.getContext('2d');
+  const sx=(VW-outW)/2, sy=(VH-outH)/2;
+  ctx.drawImage(video,sx,sy,outW,outH,0,0,outW,outH);
+
+  // 화면→Canvas 스케일 (video 요소의 실제 화면 크기 기준)
+  const vRect=document.getElementById('video').getBoundingClientRect();
+  const scX=outW/vRect.width, scY=outH/vRect.height;
+
+  drawFinalOverlay(ctx,outW,outH,scX,scY,vRect);
+
+  canvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob),a=document.createElement('a'),now=displayNow();
+    a.href=url;
+    a.download=`timemark_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}.jpg`;
+    a.click();URL.revokeObjectURL(url);
+  },'image/jpeg',0.95);
+  showToast('📸 저장되었습니다');
+}
+
+function drawFinalOverlay(ctx, CW, CH, scX, scY, vRect){
+  const now=displayNow();
+  const hh=pad2(now.getHours()),mm=pad2(now.getMinutes());
+  const dateStr=`${now.getFullYear()}년${pad2(now.getMonth()+1)}월${pad2(now.getDate())}일`;
+  const dayStr=DAYS[now.getDay()];
+
+  ctx.save();
+  ctx.textBaseline='bottom';
+  ctx.textAlign='left';
+
+  // DOM 요소 → Canvas 좌표 변환
+  function toC(el){
+    const r=el.getBoundingClientRect();
+    return {
+      x:(r.left-vRect.left)*scX, y:(r.top-vRect.top)*scY,
+      w:r.width*scX,             h:r.height*scY,
+      right:(r.right-vRect.left)*scX, bottom:(r.bottom-vRect.top)*scY
+    };
+  }
+
+  // clock-canvas는 정확한 크기를 이미 가짐
+  const ccR  = toC(document.getElementById('clock-canvas'));
+  const divR = toC(document.getElementById('tm-divider'));
+  const dtR  = toC(document.getElementById('tm-date'));
+  const locR = toC(document.getElementById('tm-loc'));
+  const bR   = toC(document.getElementById('tm-brand'));
+
+  // ── 1. 시계 (scaleY를 canvas transform으로) ──
+  const cFontPx = CLOCK_FONT_PX * scY;
+  const cScaleY = CLOCK_SCALE_Y;
+  const BASE    = ccR.bottom;  // 시계 하단 = clock-canvas 하단
+
+  ctx.save();
+  ctx.translate(0, BASE);
+  ctx.scale(1, cScaleY);
+  ctx.translate(0, -BASE);
+
+  ctx.font=`900 ${cFontPx}px ${FONT}`;
+  ctx.fillStyle='#fff';
+  ctx.textBaseline='bottom';
+  ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=8*scX;
+
+  const hhW=ctx.measureText(hh).width;
+  const mmW=ctx.measureText(mm).width;
+  const dotSz=7*scX, dotGap=6*scX, cPad=5*scX;
+
+  ctx.fillText(hh, ccR.x, BASE);
+
+  const colonX=ccR.x+hhW+cPad;
+  const dot2Y=BASE-7*scY, dot1Y=dot2Y-dotGap-dotSz;
+  ctx.shadowBlur=0;
+  ctx.fillRect(colonX,dot1Y,dotSz,dotSz);
+  ctx.fillRect(colonX,dot2Y,dotSz,dotSz);
+  ctx.shadowBlur=8*scX;
+
+  ctx.fillText(mm, colonX+dotSz+cPad, BASE);
   ctx.restore();
 
-  // ── 노란 경계선 ──
-  ctx.shadowBlur = 0;
-  ctx.fillStyle  = '#f0c040';
-  ctx.fillRect(dR.x, dR.y, dR.w, dR.h);
-  ctx.shadowBlur = 8 * scX;
-  ctx.fillStyle  = '#fff';
+  // ── 2. 노란 경계선 ──
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#f0c040';
+  ctx.fillRect(divR.x, divR.y, divR.w, divR.h);
+  ctx.shadowBlur=8*scX;
+  ctx.fillStyle='#fff';
 
-  // ── 날짜(상단) / 요일(하단) ──
-  ctx.font = `400 ${dFontPx}px ${FONT}`;
-  ctx.textBaseline = 'top';
-  ctx.fillText(dateStr, dtR.x, dtR.y + 2*scY);
-  ctx.textBaseline = 'bottom';
+  // ── 3. 날짜(상단) / 요일(하단) ──
+  const dFontPx=18*scY;
+  ctx.font=`400 ${dFontPx}px ${FONT}`;
+  ctx.textBaseline='top';
+  ctx.fillText(dateStr, dtR.x, dtR.y+2*scY);
+  ctx.textBaseline='bottom';
   ctx.fillText(dayStr, dtR.x, dtR.bottom);
 
-  // ── 위치 ──
-  ctx.font = `400 ${lFontPx}px ${FONT}`;
-  ctx.textBaseline = 'top';
-  ctx.shadowBlur = 6 * scX;
-  wrapLoc(currentLocation, ctx, CW * 0.78).forEach((line, i) => {
-    ctx.fillText(line, locR.x, locR.y + i * lFontPx * 1.5);
+  // ── 4. 위치 ──
+  const lFontPx=14*scY;
+  ctx.font=`400 ${lFontPx}px ${FONT}`;
+  ctx.textBaseline='top'; ctx.shadowBlur=6*scX;
+  wrapLoc(currentLocation, ctx, CW*0.78).forEach((line,i)=>{
+    ctx.fillText(line, locR.x, locR.y+i*lFontPx*1.5);
   });
 
-  // ── 우측 하단 브랜드 ──
-  ctx.textAlign    = 'right';
-  ctx.textBaseline = 'bottom';
-  ctx.shadowBlur   = 6 * scX;
+  // ── 5. 우측 하단 브랜드 ──
+  const bFontPx=17*scY, subFontPx=11*scY;
+  ctx.textAlign='right'; ctx.textBaseline='bottom'; ctx.shadowBlur=6*scX;
 
-  ctx.font      = `700 ${bFontPx}px ${FONT}`;
-  ctx.fillStyle = '#f0c040';
-  const mkW = ctx.measureText('마크').width;
-  ctx.fillText('타임', bR.right - mkW, bR.y + bFontPx);
+  ctx.font=`700 ${bFontPx}px ${FONT}`; ctx.fillStyle='#f0c040';
+  const mkW=ctx.measureText('마크').width;
+  ctx.fillText('타임', bR.right-mkW, bR.y+bFontPx*1.1);
 
-  ctx.font      = `400 ${bFontPx}px ${FONT}`;
-  ctx.fillStyle = '#fff';
-  ctx.fillText('마크', bR.right, bR.y + bFontPx);
+  ctx.font=`400 ${bFontPx}px ${FONT}`; ctx.fillStyle='#fff';
+  ctx.fillText('마크', bR.right, bR.y+bFontPx*1.1);
 
-  const subFontPx = parseFloat(getComputedStyle(document.getElementById('tm-brand-sub')).fontSize) * scY;
-  ctx.font      = `300 ${subFontPx}px ${FONT}`;
-  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.font=`300 ${subFontPx}px ${FONT}`; ctx.fillStyle='rgba(255,255,255,0.88)';
   ctx.fillText('시간 · 위치 인증됨', bR.right, bR.bottom);
 
-  // ── 우측 세로 시리얼 ──
+  // ── 6. 우측 세로 시리얼 ──
   ctx.save();
-  ctx.translate(CW - 11*scX, CH * 0.5);
-  ctx.rotate(-Math.PI / 2);
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowBlur   = 4 * scX;
+  ctx.translate(CW-11*scX, CH*0.5);
+  ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.shadowBlur=4*scX;
 
-  ctx.font      = `300 ${sFontPx}px ${FONT}`;
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  const serialStr = `${currentSerial}  Timemark Verified`;
-  const totalW    = ctx.measureText(serialStr).width;
-  ctx.fillText(serialStr, 0, 0);
+  const sFontPx=10*scX;
+  ctx.font=`300 ${sFontPx}px ${FONT}`;
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  const serialStr=`${currentSerial}  Timemark Verified`;
+  const totalW=ctx.measureText(serialStr).width;
+  ctx.fillText(serialStr,0,0);
 
-  // 방패 아이콘
-  const iconX = -(totalW / 2) - 13 * scX;
+  // 방패: rotate(-PI/2) 공간에서 rotate(-PI/2) 추가
+  // = HTML의 rotate(-90deg)와 동일 → 텍스트 읽는 방향(위→아래)으로 방패 세움
+  const iconX=-(totalW/2)-13*scX;
   ctx.save();
-  ctx.translate(iconX, 0);
-  ctx.rotate(Math.PI / 2);
-  const sh=5*scX, sw=sh*0.88, sx=-sw/2, sy2=-sh/2;
+  ctx.translate(iconX,0);
+  ctx.rotate(-Math.PI/2);  // ← 핵심: HTML svg rotate(-90deg)와 동일
+
+  const sh=5*scX,sw=sh*0.88,sx=-sw/2,sy=-sh/2;
   ctx.shadowBlur=0;
   ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=0.9*scX;
   ctx.fillStyle='rgba(255,255,255,0.07)';
   ctx.beginPath();
-  ctx.moveTo(sx+sw*0.5,sy2); ctx.lineTo(sx+sw,sy2+sh*0.25); ctx.lineTo(sx+sw,sy2+sh*0.55);
-  ctx.quadraticCurveTo(sx+sw,sy2+sh,sx+sw*0.5,sy2+sh);
-  ctx.quadraticCurveTo(sx,sy2+sh,sx,sy2+sh*0.55);
-  ctx.lineTo(sx,sy2+sh*0.25); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.moveTo(sx+sw*0.5,sy); ctx.lineTo(sx+sw,sy+sh*0.25); ctx.lineTo(sx+sw,sy+sh*0.55);
+  ctx.quadraticCurveTo(sx+sw,sy+sh,sx+sw*0.5,sy+sh);
+  ctx.quadraticCurveTo(sx,sy+sh,sx,sy+sh*0.55);
+  ctx.lineTo(sx,sy+sh*0.25); ctx.closePath(); ctx.fill(); ctx.stroke();
+
   ctx.beginPath();
   ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=0.9*scX;
   ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.moveTo(sx+sw*0.25,sy2+sh*0.52); ctx.lineTo(sx+sw*0.44,sy2+sh*0.70); ctx.lineTo(sx+sw*0.75,sy2+sh*0.34);
+  ctx.moveTo(sx+sw*0.25,sy+sh*0.52); ctx.lineTo(sx+sw*0.44,sy+sh*0.70); ctx.lineTo(sx+sw*0.75,sy+sh*0.34);
   ctx.stroke();
-  ctx.restore();
 
+  ctx.restore();
   ctx.restore();
   ctx.restore();
 }
 
-function wrapLoc(text, ctx, maxW) {
-  if (!text) return [''];
-  const words = text.split(' ');
-  const lines = []; let cur = '';
-  for (const w of words) {
-    const test = cur ? cur+' '+w : w;
-    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
-    else cur = test;
-  }
-  if (cur) lines.push(cur);
-  return lines.slice(0, 2);
+function wrapLoc(text,ctx,maxW){
+  if(!text)return[''];
+  const words=text.split(' ');const lines=[];let cur='';
+  for(const w of words){const t=cur?cur+' '+w:w;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w;}else cur=t;}
+  if(cur)lines.push(cur);return lines.slice(0,2);
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
-}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
 // ── 초기화 ──
-document.getElementById('serial-num').textContent = currentSerial;
-// Full 기본 활성화
-document.querySelectorAll('.ratio-btn')[0].classList.add('active');
+document.getElementById('serial-num').textContent=currentSerial;
 updateClock();
-setInterval(updateClock, 1000);
-window.addEventListener('resize', applyRatio);
+setInterval(updateClock,1000);
+window.addEventListener('resize',applyRatio);
 checkAndStart();
-setInterval(getLocation, 60000);
+setInterval(getLocation,60000);
 </script>
 </body>
 </html>
